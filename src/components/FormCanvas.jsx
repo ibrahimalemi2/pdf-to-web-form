@@ -35,7 +35,6 @@ import {
   Heading,
   X
 } from 'lucide-react';
-import { AI_DETECTED_FIELDS } from '../constants/formFields';
 
 // Component metadata with rich titles, descriptions, and color tokens for hover identification
 const FIELD_TYPE_INFO = {
@@ -245,13 +244,15 @@ export default function FormCanvas({
           }
         }));
         onPopulateAiFields(mapped);
+      } else if (fields && fields.length > 0) {
+        onPopulateAiFields(fields);
       } else {
-        onPopulateAiFields(AI_DETECTED_FIELDS);
+        onPopulateAiFields([]);
       }
 
       onUpdateFormMeta({
-        title: "Assignment Submission & Coursework Form",
-        description: "Auto-detected from PDF: Complete your responses below. All fields are dynamically bound to the official grading document."
+        title: formTitle || "Document Submission Form",
+        description: formDescription || "Auto-detected from PDF: Complete your responses below. All fields are dynamically bound to the official document."
       });
     }, 1350);
   };

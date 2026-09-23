@@ -1,11 +1,81 @@
 # pyrefly: ignore-errors
+import asyncio
+import io
 import logging
 import re
 from typing import Any
 
+import cv2
+import numpy as np
+from PIL import Image
 import pymupdf as fitz
 
+try:
+    import winocr
+except ImportError:
+    winocr = None
+
 logger = logging.getLogger(__name__)
+
+def run_coro_sync(coro):
+    """Safely executes an async coroutine synchronously whether or not an event loop is running."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop and loop.is_running():
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(asyncio.run, coro).result()
+    else:
+        return asyncio.run(coro)
+
+def clean_ocr_label(text: str) -> str:
+    """Cleans OCR noise and fixes common character recognition inaccuracies on scanned forms."""
+    t = text.strip()
+    t = re.sub(r'^[_\W]+', '', t)
+    t = re.sub(r'[_\W]+$', '', t)
+    t = re.sub(r'[\x80-\xff\ufffd]', '', t)
+    t = re.sub(r'\s+', ' ', t).strip()
+    
+    replacements = [
+        (r'\bbate of birth\b', 'Date of birth'),
+        (r'\bbate\b', 'Date'),
+        (r'\bnumte\.?r\b', 'Phone number'),
+        (r'\bpir\.?one numipr\b', 'Phone number'),
+        (r'\bmaih\b', 'Email'),
+        (r'\bemail\.\b', 'Email'),
+        (r'\bfred\b', 'lived'),
+        (r'\bIQed\b', 'lived'),
+        (r'\bheed\b', 'lived'),
+        (r'\bplea;e\b', 'Please'),
+        (r'\bpkase\b', 'Please'),
+        (r'\bidentifkation\b', 'Identification'),
+        (r'\bversan\b', 'Version'),
+        (r'\bversion r\.?o\b', 'Version no.'),
+        (r'\bfarm of lb\b', 'Alternative form of ID'),
+        (r'\bCaf/?vehicle\b', 'Car/vehicle'),
+        (r'\bCaf/vehkle\b', 'Car/vehicle'),
+        (r'\bkt\b', 'Act'),
+        (r'\bxid\.?resv\b', 'address'),
+        (r'\b\*cdre-?w\b', 'address'),
+        (r'\bcdre-?w\b', 'address'),
+        (r'\bcurrent\b$', 'Current address'),
+        (r'\bapplicant detail\b', 'Applicant details'),
+        (r'\blorg\b', 'long'),
+        (r'\bkavirg\b', 'leaving'),
+        (r'\btails\b', 'details'),
+        (r'\bitsi%nths\b', 'Months'),
+        (r'\bnunths\b', 'Months'),
+        (r'\bmobile pharr\.?e\b', 'Mobile phone'),
+    ]
+    for pat, rep in replacements:
+        t = re.sub(pat, rep, t, flags=re.IGNORECASE)
+    t = t.replace('*', ' ')
+    t = re.sub(r'^[_\W]+', '', t)
+    t = re.sub(r'[_\W]+$', '', t)
+    t = re.sub(r'\s+', ' ', t).strip()
+    return t
 
 # Words that indicate field labels
 LABEL_KEYWORDS = [
@@ -246,6 +316,175 @@ def parse_page_checkboxes(page: fitz.Page, page_num: int) -> list[dict[str, Any]
         r_idx += 1
         
     return checkbox_groups
+
+def detect_scanned_page_fields(page: fitz.Page, page_num: int) -> tuple[list[dict[str, Any]], str]:
+    """Extracts form fields and document title from scanned or rasterized PDF pages using Windows Native OCR + OpenCV."""
+    if winocr is None:
+        return [], ""
+    
+    pw = float(page.rect.width)
+    ph = float(page.rect.height)
+    if pw <= 0 or ph <= 0:
+        return [], ""
+        
+    dpi = 180
+    pix = page.get_pixmap(dpi=dpi)
+    scale_x = pw / pix.width
+    scale_y = ph / pix.height
+    
+    img_pil = Image.open(io.BytesIO(pix.tobytes("png")))
+    try:
+        ocr_res = run_coro_sync(winocr.recognize_pil(img_pil, "en"))
+    except Exception as e:
+        logger.warning("winocr recognition failed on page %d: %s", page_num, e)
+        return [], ""
+        
+    # Detect horizontal lines using OpenCV
+    form_lines = []
+    try:
+        img_np = np.frombuffer(pix.samples, dtype=np.uint8).reshape((pix.height, pix.width, pix.n))
+        if pix.n == 4:
+            img_np = cv2.cvtColor(img_np, cv2.COLOR_RGBA2BGR)
+        gray = cv2.cvtColor(img_np, cv2.COLOR_BGR2GRAY)
+        bw = cv2.adaptiveThreshold(~gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 15, -2)
+        h_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (int(pix.width * 0.05), 1))
+        h_lines = cv2.morphologyEx(bw, cv2.MORPH_OPEN, h_kernel)
+        contours, _ = cv2.findContours(h_lines, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        for c in contours:
+            x, y, w, h = cv2.boundingRect(c)
+            if w > pix.width * 0.06 and y > pix.height * 0.12:
+                form_lines.append({
+                    "x0": x * scale_x,
+                    "y0": y * scale_y,
+                    "x1": (x + w) * scale_x,
+                    "y1": (y + h) * scale_y,
+                    "w": w * scale_x,
+                    "h": h * scale_y
+                })
+    except Exception as e:
+        logger.debug("OpenCV line detection non-fatal error: %s", e)
+        
+    inferred_title = ""
+    fields = []
+    seen_labels = set()
+    field_counter = 1
+    
+    ocr_lines = []
+    for line in ocr_res.lines:
+        t = line.text.strip()
+        if len(t) < 2:
+            continue
+        min_x = min(w.bounding_rect.x for w in line.words) * scale_x
+        min_y = min(w.bounding_rect.y for w in line.words) * scale_y
+        max_x = max(w.bounding_rect.x + w.bounding_rect.width for w in line.words) * scale_x
+        max_y = max(w.bounding_rect.y + w.bounding_rect.height for w in line.words) * scale_y
+        ocr_lines.append({
+            "text": t,
+            "min_x": min_x,
+            "min_y": min_y,
+            "max_x": max_x,
+            "max_y": max_y,
+            "line": line
+        })
+        
+    ocr_lines.sort(key=lambda l: (l["min_y"], l["min_x"]))
+    
+    for item in ocr_lines:
+        raw_text = item["text"]
+        min_x = item["min_x"]
+        min_y = item["min_y"]
+        max_x = item["max_x"]
+        max_y = item["max_y"]
+        
+        cleaned = clean_ocr_label(raw_text)
+        if len(cleaned) < 2:
+            continue
+            
+        lower_cleaned = cleaned.lower()
+        
+        # Check for title near the top
+        if not inferred_title and min_y < ph * 0.25 and ("form" in lower_cleaned or "application" in lower_cleaned or "agreement" in lower_cleaned or "submission" in lower_cleaned):
+            inferred_title = cleaned
+            continue
+            
+        # Skip pure explanatory paragraphs without inputs
+        if any(k in lower_cleaned for k in ["privacy", "privet", "protected under", "information you provide", "credit reference", "credit check", "address below", "please complete"]):
+            continue
+        if len(cleaned) > 50 and ":" not in cleaned and "name" not in lower_cleaned:
+            continue
+            
+        # Skip section headers that have no input
+        if lower_cleaned in ["tenancy details", "applicant details", "identification", "personal details", "section 1", "section 2"]:
+            continue
+            
+        # Avoid duplicate labels
+        norm_key = re.sub(r'[^a-z0-9]', '', lower_cleaned)
+        if norm_key in seen_labels:
+            continue
+        seen_labels.add(norm_key)
+        
+        # Find closest form line that is either to the right on the same row, or directly below
+        matched_line = None
+        for fl in form_lines:
+            if fl["x0"] >= min_x + 10 and abs((fl["y0"] + fl["y1"])/2 - (min_y + max_y)/2) < 14:
+                matched_line = fl
+                break
+            if abs(fl["y0"] - max_y) < 12 and fl["x0"] <= max_x and fl["x1"] >= min_x:
+                matched_line = fl
+                break
+                
+        if matched_line:
+            inp_x0 = max(min_x, matched_line["x0"])
+            inp_x1 = min(pw - 20, matched_line["x1"])
+            inp_y0 = max(min_y - 2, matched_line["y0"] - 18)
+            inp_y1 = matched_line["y0"] + 4
+        else:
+            if max_x < pw * 0.45:
+                inp_x0 = max_x + 8
+                inp_x1 = min(pw * 0.55, max(inp_x0 + 90, pw * 0.48))
+                inp_y0 = min_y - 2
+                inp_y1 = max_y + 4
+            else:
+                inp_x0 = max_x + 8
+                inp_x1 = min(pw - 20, max(inp_x0 + 80, pw - 24))
+                inp_y0 = min_y - 2
+                inp_y1 = max_y + 4
+                
+        f_type = detect_field_type(cleaned)
+        inp_w = round(inp_x1 - inp_x0, 2)
+        inp_h = round(inp_y1 - inp_y0, 2)
+        lbl_w = round(max_x - min_x, 2)
+        lbl_h = round(max_y - min_y, 2)
+        
+        span = 2 if (f_type == "Long Text" or inp_w > 260) else 1
+        
+        fields.append({
+            "id": f"field_{page_num}_{field_counter}",
+            "fieldNumber": field_counter,
+            "page": page_num,
+            "type": f_type,
+            "label": cleaned,
+            "value": "",
+            "rawText": raw_text,
+            "labelBbox": [round(min_x, 2), round(min_y, 2), round(max_x, 2), round(max_y, 2)],
+            "inputBbox": [round(inp_x0, 2), round(inp_y0, 2), round(inp_x1, 2), round(inp_y1, 2)],
+            "labelDimensions": {"width": lbl_w, "height": lbl_h},
+            "inputDimensions": {"width": inp_w, "height": inp_h},
+            "columnSpan": span,
+            "percentage": {
+                "x": f"{round((inp_x0 / pw) * 100, 2)}%",
+                "y": f"{round((inp_y0 / ph) * 100, 2)}%",
+                "w": f"{round((inp_w / pw) * 100, 2)}%",
+                "h": f"{round((inp_h / ph) * 100, 2)}%",
+                "targetX": f"{round((inp_x0 / pw) * 100, 2)}%",
+                "targetY": f"{round((inp_y0 / ph) * 100, 2)}%",
+                "targetW": f"{round((inp_w / pw) * 100, 2)}%",
+                "targetH": f"{round((inp_h / ph) * 100, 2)}%"
+            }
+        })
+        field_counter += 1
+        
+    return fields, inferred_title
 
 def detect_form_fields_on_page(page: fitz.Page, page_num: int) -> list[dict[str, Any]]:
     rect = page.rect
@@ -573,6 +812,17 @@ def detect_form_fields_on_page(page: fitz.Page, page_num: int) -> list[dict[str,
         if not is_dup:
             deduped_fields.append(f)
 
+    # If standard text extraction found fewer than 2 fields, fallback to scanned/raster OCR
+    if len(deduped_fields) < 2:
+        try:
+            scanned_fields, scanned_title = detect_scanned_page_fields(page, page_num)
+            if scanned_fields and len(scanned_fields) >= 2:
+                if scanned_title:
+                    page._inferred_title = scanned_title
+                return scanned_fields
+        except Exception as exc:
+            logger.warning("Scanned page OCR fallback failed on page %d: %s", page_num, exc)
+
     # Sort fields on this page in natural visual reading order: top-to-bottom, then left-to-right
     deduped_fields.sort(key=lambda f: (
         round(f.get("labelBbox", [0, 0, 0, 0])[1] / 12.0) * 12.0,
@@ -605,7 +855,9 @@ def parse_pdf_document(pdf_bytes: bytes, filename: str = "document.pdf") -> dict
             detected_fields = detect_form_fields_on_page(page, page_num)
             all_fields.extend(detected_fields)
 
-            if not doc_inferred_title:
+            if not doc_inferred_title and hasattr(page, "_inferred_title") and page._inferred_title:
+                doc_inferred_title = page._inferred_title
+            elif not doc_inferred_title:
                 for f in detected_fields:
                     if f["label"].lower() in ["course title", "subject"]:
                         doc_inferred_title = f"{f['value']} - Submission Form" if f["value"] else ""
@@ -620,7 +872,8 @@ def parse_pdf_document(pdf_bytes: bytes, filename: str = "document.pdf") -> dict
             })
 
         raw_title = doc_inferred_title or doc.metadata.get("title") or filename
-        clean_title = re.sub(r'\.pdf$', '', raw_title, flags=re.IGNORECASE)
+        clean_title = re.sub(r'^[0-9a-f]{8}_', '', raw_title, flags=re.IGNORECASE)
+        clean_title = re.sub(r'\.pdf$', '', clean_title, flags=re.IGNORECASE)
         clean_title = re.sub(r'[._-]+$', '', clean_title)
         clean_title = re.sub(r'[-_.]+', ' ', clean_title).strip()
         if clean_title.islower() or clean_title.isupper():

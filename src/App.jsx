@@ -8,7 +8,7 @@ import UploadView from './components/UploadView';
 import ConnectorLines from './components/ConnectorLines';
 import PreviewMode from './components/PreviewMode';
 import { GitBranch, CheckCircle2, ArrowRight } from 'lucide-react';
-import { INITIAL_FIELDS, AI_DETECTED_FIELDS } from './constants/formFields';
+import { INITIAL_FIELDS } from './constants/formFields';
 import { loadPdfDocument, extractClientFieldsFromPdf } from './utils/pdfRenderer';
 import {
   API_BASE_URL,
@@ -61,6 +61,7 @@ export default function App() {
 
   const formatFormMeta = (rawTitle = '', rawDesc = '', filename = '') => {
     let cleanTitle = (rawTitle || filename || 'Document Submission Form')
+      .replace(/^[0-9a-f]{8}_/i, '')
       .replace(/\.pdf$/i, '')
       .replace(/[._-]+$/, '')
       .replace(/[-_.]+/g, ' ')
@@ -86,11 +87,8 @@ export default function App() {
 
   const mapBackendFieldsToFormFields = (backendFields) => {
     const normalizeLabel = (label) => {
-      const l = (label || '').toLowerCase();
-      if (l === 'assignment number') return 'Assignment';
-      if (l === 'instructor') return 'Teacher';
-      if (l === 'program') return 'Class';
-      return label;
+      const l = (label || '').trim().replace(/[:\s]+$/, '');
+      return l || label;
     };
 
     // Sort fields strictly in natural visual reading order: Page first, then vertical Y top-to-bottom, then horizontal X left-to-right
@@ -362,7 +360,7 @@ export default function App() {
 
   // AI Recognition trigger result handler
   const handlePopulateAiFields = (detectedFields) => {
-    const list = detectedFields || AI_DETECTED_FIELDS;
+    const list = detectedFields || [];
     setFields(list);
     if (list.length > 0) {
       setSelectedFieldId(list[0].id);
