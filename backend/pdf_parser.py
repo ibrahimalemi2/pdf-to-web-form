@@ -1,6 +1,6 @@
 import re
 import pymupdf as fitz
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 # Words that indicate field labels
 LABEL_KEYWORDS = [
@@ -578,11 +578,9 @@ def parse_pdf_document(pdf_bytes: bytes, filename: str = "document.pdf") -> Dict
 
     raw_title = doc_inferred_title or doc.metadata.get("title") or filename
     clean_title = re.sub(r'\.pdf$', '', raw_title, flags=re.IGNORECASE)
-    clean_title = re.sub(r'[._]+$', '', clean_title)
-    clean_title = clean_title.replace('_', ' ').strip()
-    if 'visa' in clean_title.lower():
-        clean_title = 'Afghanistan Visa Application'
-    elif clean_title.islower() or clean_title.isupper():
+    clean_title = re.sub(r'[._-]+$', '', clean_title)
+    clean_title = re.sub(r'[-_.]+', ' ', clean_title).strip()
+    if clean_title.islower() or clean_title.isupper():
         clean_title = clean_title.title()
 
     metadata = {

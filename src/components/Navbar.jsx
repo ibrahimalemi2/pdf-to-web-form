@@ -26,8 +26,27 @@ export default function Navbar({
   isSavingTemplate = false,
   onSaveTemplate = () => {}
 }) {
+  const fileInputRef = React.useRef(null);
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      e.target.value = '';
+      onUploadPdf(file);
+    }
+  };
+
   return (
     <header className="h-14 bg-white border-b border-slate-200 px-4 flex items-center justify-between z-30 shrink-0 select-none shadow-xs">
+      {/* Hidden file input controlled via ref */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,application/pdf"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+
       {/* Left section: Back button & Navigation Tabs */}
       <div className="flex items-center gap-4">
         <button 
@@ -84,8 +103,9 @@ export default function Navbar({
 
       {/* Center: Truncated File Name Badge & Upload PDF Trigger */}
       <div className="flex items-center gap-2 max-w-xs md:max-w-md">
-        <label 
-          htmlFor="pdf-upload-input"
+        <button 
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
           title="Click to upload a new PDF"
           className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 hover:border-blue-300 px-3 py-1 rounded-full text-xs font-medium text-slate-700 transition cursor-pointer group"
         >
@@ -96,18 +116,7 @@ export default function Navbar({
           <span className="hidden md:inline-flex items-center gap-1 text-[11px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded font-mono font-medium border border-blue-200">
             Upload New
           </span>
-          <input
-            id="pdf-upload-input"
-            type="file"
-            accept=".pdf,application/pdf"
-            onChange={(e) => {
-              if (e.target.files && e.target.files[0]) {
-                onUploadPdf(e.target.files[0]);
-              }
-            }}
-            className="hidden"
-          />
-        </label>
+        </button>
       </div>
 
       {/* Right side: Actions & Publish Button */}

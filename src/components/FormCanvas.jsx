@@ -126,8 +126,8 @@ export default function FormCanvas({
   onPopulateAiFields = () => {},
   step = 1,
   totalSteps = 2,
-  formTitle = "Course Registration & Section Request",
-  formDescription = "Please verify your assigned course details below. All entries are dynamically synchronized with the official PDF syllabus registry.",
+  formTitle = "Document Submission Form",
+  formDescription = "Complete the required fields below. Responses are dynamically synchronized with your official document.",
   onUpdateFormMeta = () => {},
   detectedBackendFields = [],
   hoveredFieldId = null,
@@ -142,6 +142,11 @@ export default function FormCanvas({
   const [labelDraft, setLabelDraft] = useState('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(formTitle);
+
+  // Synchronize titleDraft when formTitle updates
+  useEffect(() => {
+    setTitleDraft(formTitle);
+  }, [formTitle]);
 
   // Quick component type switcher dropdown state
   const [openTypeChooserId, setOpenTypeChooserId] = useState(null);
@@ -612,7 +617,7 @@ export default function FormCanvas({
               Step {step} of {totalSteps}
             </span>
             <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">
-              {isTemplateMatch ? 'Template Matched (100% Precision)' : aiScanComplete ? 'Auto-Detected Form' : 'Course Information'}
+              {isTemplateMatch ? 'Template Matched (100% Precision)' : aiScanComplete ? 'Auto-Detected Form' : (formTitle || 'Document Form')}
             </span>
           </div>
 

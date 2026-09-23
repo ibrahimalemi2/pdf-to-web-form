@@ -32,7 +32,8 @@ export default function App() {
   const [fields, setFields] = useState(INITIAL_FIELDS);
   const [selectedFieldId, setSelectedFieldId] = useState(null);
   const [hoveredFieldId, setHoveredFieldId] = useState(null);
-  const [isPropertyPanelOpen, setIsPropertyPanelOpen] = useState(true);
+  const [isPropertyPanelOpen, setIsPropertyPanelOpen] = useState(false);
+  const [isPropertyPanelPinned, setIsPropertyPanelPinned] = useState(false);
   const [isPdfExpanded, setIsPdfExpanded] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -59,21 +60,17 @@ export default function App() {
   };
 
   const formatFormMeta = (rawTitle = '', rawDesc = '', filename = '') => {
-    const isVisa = (filename || '').toLowerCase().includes('visa') || (rawTitle || '').toLowerCase().includes('visa');
-    if (isVisa) {
-      return {
-        title: 'Afghanistan Visa Application',
-        description: 'Collects personal, contact, employment, visa, travel, and passport details for an Afghanistan visa application.'
-      };
-    }
-
     let cleanTitle = (rawTitle || filename || 'Document Submission Form')
       .replace(/\.pdf$/i, '')
-      .replace(/[._]+$/, '')
-      .replace(/[_.]/g, ' ')
+      .replace(/[._-]+$/, '')
+      .replace(/[-_.]+/g, ' ')
       .trim();
+
     if (cleanTitle.length > 0) {
-      cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+      cleanTitle = cleanTitle.split(' ')
+        .filter(Boolean)
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
     }
 
     let cleanDesc = rawDesc || '';
@@ -126,18 +123,28 @@ export default function App() {
     return sorted.map((df, idx) => {
       const normLabel = normalizeLabel(df.label);
       const isCore = ['Assignment', 'Section', 'Teacher', 'Class'].includes(normLabel);
+      const isDate = normLabel.toLowerCase().includes('date') || (df.type && df.type.toLowerCase().includes('date'));
+      const finalType = df.type || (isDate ? 'Date' : 'Short Text');
       return {
         id: df.id || `field_${Date.now()}_${idx}`,
-        type: df.type || 'Short Text',
+        type: finalType,
         label: normLabel,
-        placeholder: `Enter ${normLabel.toLowerCase()}...`,
+        placeholder: finalType === 'Date' ? 'YYYY - MM - DD' : `Enter ${normLabel.toLowerCase()}...`,
+        format: finalType === 'Date' ? 'YYYY-MM-DD' : '',
+        datePlaceholderYear: 'YYYY',
+        datePlaceholderMonth: 'MM',
+        datePlaceholderDay: 'DD',
+        datePreset: 'Any date',
+        dateRangeStart: 'No limit',
+        dateRangeEnd: 'No limit',
+        dateErrorMessage: '',
         helperText: `Detected on PDF Page ${df.page || 1}`,
         value: df.value || '',
         required: isCore || idx < 4,
         readOnly: false,
         hidden: false,
-        columnSpan: df.columnSpan || (df.type === 'Long Text' ? 2 : 1),
-        options: df.options || (df.type === 'Dropdown' ? ['Option A', 'Option B', 'Option C'] : (df.type === 'Checkbox' ? ['Option 1', 'Option 2'] : undefined)),
+        columnSpan: df.columnSpan || (finalType === 'Long Text' ? 2 : 1),
+        options: df.options || (finalType === 'Dropdown' ? ['Option A', 'Option B', 'Option C'] : (finalType === 'Checkbox' ? ['Option 1', 'Option 2'] : undefined)),
         optionsCoordinates: df.optionsCoordinates || undefined,
         multipleChoices: df.multipleChoices ?? false,
         choicesPerRow: df.choicesPerRow || 2,
@@ -200,6 +207,9 @@ export default function App() {
     if (!file) return;
     setIsUploading(true);
     setPdfFile(file); // Stores the local file for instant in-browser PDF.js rendering
+    setDocumentName(file.name);
+    setFormMeta(formatFormMeta('', '', file.name));
+    setSelectedFieldId(null);
     showToast(`Uploading and scanning ${file.name}...`);
 
     try {
@@ -222,8 +232,12 @@ export default function App() {
         // HEURISTIC SCANNER FIRST-PASS
         const mapped = mapBackendFieldsToFormFields(result.fields);
         setFields(mapped);
-        setSelectedFieldId(mapped[0].id);
+        setSelectedFieldId(mapped[0]?.id || null);
         showToast(`🎉 Parsed ${result.filename}! Found ${result.totalDetectedFields} editable places.`);
+      } else {
+        setFields([]);
+        setSelectedFieldId(null);
+        showToast(`🎉 Loaded ${result.filename}!`);
       }
 
       const meta = formatFormMeta(result.metadata?.title, '', result.filename);
@@ -240,15 +254,24 @@ export default function App() {
         if (clientFields && clientFields.length > 0) {
           setFields(clientFields);
           setSelectedFieldId(clientFields[0].id);
+        } else {
+          setFields([]);
+          setSelectedFieldId(null);
         }
       } catch (clientErr) {
         console.warn('Client fallback extraction error:', clientErr);
+        setFields([]);
+        setSelectedFieldId(null);
       }
 
       // Generate a temporary local fingerprint to prevent overwriting known templates
       const fallbackFp = `local_${file.name.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 16)}`;
       setCurrentFingerprint(fallbackFp);
       setDocumentName(file.name);
+      setDocumentId(`local_${Date.now()}`);
+      setPreviewImageUrl(null);
+      setDetectedBackendFields([]);
+      setFormMeta(formatFormMeta('', '', file.name));
       showToast(`Loaded ${file.name}. Switched to Editor workspace.`);
       setCurrentView('editor');
     } finally {
@@ -363,11 +386,31 @@ export default function App() {
       'Header': 'Section Title'
     };
 
+    const isDate = toolType === 'Date';
     const newField = {
       id: newId,
       type: toolType,
       label: defaultLabels[toolType] || `${toolType} Field`,
-      placeholder: toolType === 'Header' || toolType === 'Section' ? `${toolType} Title` : `Enter ${toolType.toLowerCase()}...`,
+      placeholder: isDate ? 'YYYY - MM - DD' : (toolType === 'Header' || toolType === 'Section' ? `${toolType} Title` : `Enter ${toolType.toLowerCase()}...`),
+      format: isDate ? 'YYYY-MM-DD' : '',
+      datePlaceholderYear: 'YYYY',
+      datePlaceholderMonth: 'MM',
+      datePlaceholderDay: 'DD',
+      datePreset: 'Any date',
+      dateRangeStart: 'No limit',
+      dateRangeEnd: 'No limit',
+      dateErrorMessage: '',
+      align: 'left',
+      printInPdf: true,
+      pdfFont: 'Roboto',
+      pdfFontSize: 10,
+      pdfFontColor: '#000000',
+      pdfLetterSpacing: 0,
+      pdfLineSpacing: 2,
+      pdfMonospaced: true,
+      pdfOverflowSmaller: true,
+      pdfOverflowWrap: true,
+      pdfTextSpacing: 'Natural',
       helperText: `Configured ${toolType.toLowerCase()} input`,
       value: '',
       required: false,
@@ -545,6 +588,8 @@ export default function App() {
         formDescription={formMeta.description || "Collects student assignment details and answers for parallel computing coursework."}
         fields={fields}
         documentName={documentName}
+        documentId={documentId}
+        pdfFile={pdfFile}
         onExitPreview={() => setActiveTab('design')}
       />
     );
@@ -567,8 +612,27 @@ export default function App() {
         onSaveTemplate={handleSaveTemplate}
       />
 
-      {/* Main Split-Screen Workspace */}
-      <div ref={workspaceRef} className="flex-1 flex flex-row overflow-hidden relative">
+      {/* Main Split-Screen Workspace with Drag-and-Drop PDF Upload Support */}
+      <div 
+        ref={workspaceRef} 
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+            const dropped = e.dataTransfer.files[0];
+            if (dropped.name.toLowerCase().endsWith('.pdf') || dropped.type === 'application/pdf') {
+              handleUploadPdf(dropped);
+            } else {
+              showToast('Please drop a valid .pdf document.');
+            }
+          }
+        }}
+        className="flex-1 flex flex-row overflow-hidden relative"
+      >
         {/* Far-Left Vertical Toolbox */}
         <SidebarTools 
           onAddField={handleAddField}
@@ -634,13 +698,17 @@ export default function App() {
           visible={showConnectors && activeTab === 'design'}
         />
 
-        {/* Field Properties Inspector Panel */}
-        {isPropertyPanelOpen && selectedField && activeTab === 'design' && (
+        {/* Field Properties Inspector Panel (when PINNED as docked sidebar) */}
+        {isPropertyPanelOpen && selectedField && activeTab === 'design' && isPropertyPanelPinned && (
           <FieldPropertiesPanel
             field={selectedField}
             onUpdateField={handleUpdateField}
             onDeleteField={handleDeleteField}
             onClose={() => setIsPropertyPanelOpen(false)}
+            isPinned={true}
+            onTogglePin={() => setIsPropertyPanelPinned(false)}
+            onNavigateToLogics={() => setActiveTab('logics')}
+            fieldIndex={fields.findIndex(f => f.id === selectedField.id) + 1}
           />
         )}
 
@@ -663,8 +731,23 @@ export default function App() {
           onToggleExpand={() => setIsPdfExpanded(prev => !prev)}
           onImportDetectedFields={detectedBackendFields.length > 0 ? handleImportDetectedFields : null}
           detectedCount={detectedBackendFields.length}
+          onUploadPdf={handleUploadPdf}
         />
       </div>
+
+      {/* Field Properties Settings Dialog (when UNPINNED as floating modal) */}
+      {isPropertyPanelOpen && selectedField && activeTab === 'design' && !isPropertyPanelPinned && (
+        <FieldPropertiesPanel
+          field={selectedField}
+          onUpdateField={handleUpdateField}
+          onDeleteField={handleDeleteField}
+          onClose={() => setIsPropertyPanelOpen(false)}
+          isPinned={false}
+          onTogglePin={() => setIsPropertyPanelPinned(true)}
+          onNavigateToLogics={() => setActiveTab('logics')}
+          fieldIndex={fields.findIndex(f => f.id === selectedField.id) + 1}
+        />
+      )}
 
       {/* Toast Notification */}
       {toastMessage && (

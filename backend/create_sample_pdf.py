@@ -1,7 +1,8 @@
 import os
+from typing import Optional
 import pymupdf as fitz
 
-def generate_sample_pdf(output_path: str = None):
+def generate_sample_pdf(output_path: Optional[str] = None):
     """
     Generates a clean digital PDF with standard form fields for testing
     PyMuPDF extraction: Instructor, Section, Course Title, Schedule, Remarks.

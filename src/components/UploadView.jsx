@@ -52,7 +52,9 @@ export default function UploadView({
     setDragError(null);
     const files = e.target.files;
     if (files && files.length > 0) {
-      onUploadFile(files[0]);
+      const file = files[0];
+      e.target.value = '';
+      onUploadFile(file);
     }
   };
 

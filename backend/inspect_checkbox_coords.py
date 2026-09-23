@@ -1,15 +1,22 @@
 import os
 import pymupdf as fitz
-import json
 
 pdf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads', '8fa5bad3_visa..pdf')
 if not os.path.exists(pdf_path):
-    # fallback to any available pdf in uploads
     uploads_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
-    for f in os.listdir(uploads_dir):
-        if f.endswith('.pdf'):
-            pdf_path = os.path.join(uploads_dir, f)
-            break
+    if os.path.exists(uploads_dir):
+        for f in os.listdir(uploads_dir):
+            if f.endswith('.pdf'):
+                pdf_path = os.path.join(uploads_dir, f)
+                break
+
+if not os.path.exists(pdf_path):
+    sample_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sample_document.pdf')
+    if os.path.exists(sample_path):
+        pdf_path = sample_path
+    else:
+        print("No PDF document found in uploads or sample_document.pdf to inspect.")
+        raise SystemExit(0)
 
 doc = fitz.open(pdf_path)
 

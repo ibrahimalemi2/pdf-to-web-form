@@ -8,7 +8,8 @@ import {
   ChevronRight,
   Sparkles,
   MousePointer,
-  Crosshair
+  Crosshair,
+  Upload
 } from 'lucide-react';
 import { loadPdfDocument, renderPdfPageToCanvas } from '../utils/pdfRenderer';
 import { getPageImageUrl, getDocumentPdfUrl } from '../services/api';
@@ -46,12 +47,27 @@ function PdfPageCard({
   const [isPageLoading, setIsPageLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
 
+  // Reset image error whenever document or pdfDoc changes
+  useEffect(() => {
+    setImageError(false);
+  }, [documentId, pdfDoc]);
+
   // Render PDF.js canvas when pdfDoc or pageNum changes
   useEffect(() => {
     let isCancelled = false;
 
     async function renderPage() {
-      if (!pdfDoc || !canvasRef.current) return;
+      if (!canvasRef.current) return;
+
+      if (!pdfDoc) {
+        // Clear canvas if no active pdfDoc to prevent showing pixels of previous PDF
+        const ctx = canvasRef.current.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        }
+        return;
+      }
+
       setIsPageLoading(true);
 
       try {
@@ -78,7 +94,7 @@ function PdfPageCard({
   }, [pdfDoc, pageNum]);
 
   // Image fallback URL if PDF.js is unavailable
-  const fallbackImageUrl = (pageNum === 1 && previewImageUrl)
+  const fallbackImageUrl = (pageNum === 1 && previewImageUrl && (!documentId || previewImageUrl.includes(documentId)))
     ? previewImageUrl
     : (documentId ? getPageImageUrl(documentId, pageNum) : null);
 
@@ -355,13 +371,15 @@ export default function PdfViewer({
   onToggleExpand = () => {},
   onImportDetectedFields = null,
   detectedCount = 0,
-  totalPages: propTotalPages = 1
+  totalPages: propTotalPages = 1,
+  onUploadPdf = null
 }) {
   const [zoomLevel, setZoomLevel] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
   const [loadedDocPages, setLoadedDocPages] = useState(1);
   const [pdfDoc, setPdfDoc] = useState(null);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+  const pdfToolbarFileInputRef = useRef(null);
 
   // Customization modes on PDF: 'select' or 'draw'
   const [activeToolMode, setActiveToolMode] = useState('select'); // 'select' | 'draw'
@@ -385,9 +403,12 @@ export default function PdfViewer({
   useEffect(() => {
     let isCancelled = false;
 
-    async function loadPdf() {
-      setIsLoadingPdf(true);
+    // Immediately clear stale document so previous document pixels are never shown
+    setPdfDoc(null);
+    setLoadedDocPages(propTotalPages || 1);
+    setIsLoadingPdf(true);
 
+    async function loadPdf() {
       try {
         let source = null;
         if (pdfFile) {
@@ -405,6 +426,9 @@ export default function PdfViewer({
         }
       } catch (err) {
         console.warn('PDF.js loading fallback to images:', err.message);
+        if (!isCancelled) {
+          setPdfDoc(null);
+        }
       } finally {
         if (!isCancelled) {
           setIsLoadingPdf(false);
@@ -417,7 +441,7 @@ export default function PdfViewer({
     return () => {
       isCancelled = true;
     };
-  }, [pdfFile, documentId]);
+  }, [pdfFile, documentId, propTotalPages]);
 
   // Track active page based on continuous vertical scroll position
   const handleScroll = useCallback(() => {
@@ -899,6 +923,34 @@ export default function PdfViewer({
               <span>Map ({detectedCount})</span>
             </button>
           )}
+
+          {/* Direct Upload PDF Button in Toolbar */}
+          {onUploadPdf && (
+            <div className="flex items-center">
+              <input
+                ref={pdfToolbarFileInputRef}
+                type="file"
+                accept=".pdf,application/pdf"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    const file = e.target.files[0];
+                    e.target.value = '';
+                    onUploadPdf(file);
+                  }
+                }}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => pdfToolbarFileInputRef.current?.click()}
+                title="Upload a new PDF to replace current document"
+                className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 text-[11px] font-medium px-2 py-1 rounded-md transition border border-slate-200 cursor-pointer"
+              >
+                <Upload className="w-3.5 h-3.5 text-blue-600" />
+                <span className="hidden md:inline">Upload PDF</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Right: Live Dimension Controls & Alignment Tools matching PlatoForms */}
@@ -1005,10 +1057,10 @@ export default function PdfViewer({
           </div>
         )}
 
-        {/* Stacked Vertical Pages */}
+        {/* Stacked Vertical Pages with Document ID keying to prevent stale canvas pixels */}
         {pagesList.map((pageNum) => (
           <PdfPageCard
-            key={`page_sheet_${pageNum}`}
+            key={`doc_${documentId || 'doc'}_page_${pageNum}`}
             pageNum={pageNum}
             totalPages={effectiveTotalPages}
             pdfDoc={pdfDoc}

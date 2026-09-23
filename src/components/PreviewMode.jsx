@@ -14,14 +14,19 @@ import {
   ArrowRight,
   PenTool,
   UploadCloud,
-  Globe
+  Globe,
+  Download,
+  Loader2
 } from 'lucide-react';
+import { downloadFilledPdf } from '../services/api';
 
 export default function PreviewMode({
   formTitle = "Assignment Submission Form",
   formDescription = "Collects student assignment details and answers for parallel computing coursework.",
   fields = [],
   documentName = "Assignment_1_F23-2353.pdf",
+  documentId = "assignment",
+  pdfFile = null,
   onExitPreview = () => {}
 }) {
   // Mode: 'classic' or 'conversational' (matching user's screenshot)
@@ -44,34 +49,29 @@ export default function PreviewMode({
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Conversational step state
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
-  // Professional PlatoForms Title & Description Normalizer
-  const isVisaDoc = React.useMemo(() => {
-    const t = (formTitle || '').toLowerCase();
-    const d = (documentName || '').toLowerCase();
-    return t.includes('visa') || d.includes('visa');
+  // Dynamic Title & Description Normalizer
+  const cleanTitle = React.useMemo(() => {
+    let t = formTitle || documentName || 'Document Submission Form';
+    if (t.toLowerCase().endsWith('.pdf')) t = t.slice(0, -4);
+    let cleaned = t.replace(/[._-]+$/, '').replace(/[-_.]+/g, ' ').trim() || 'Document Submission Form';
+    return cleaned.split(' ')
+      .filter(Boolean)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
   }, [formTitle, documentName]);
 
-  const cleanTitle = React.useMemo(() => {
-    if (isVisaDoc) return 'Afghanistan Visa Application';
-    let t = formTitle || '';
-    if (t.endsWith('.pdf')) t = t.slice(0, -4);
-    return t.replace(/[._]+$/, '').replace(/[_.]/g, ' ').trim() || 'Document Submission Form';
-  }, [formTitle, isVisaDoc]);
-
   const cleanDescription = React.useMemo(() => {
-    if (isVisaDoc) {
-      return 'Collects personal, contact, employment, visa, travel, and passport details for an Afghanistan visa application.';
-    }
     let d = formDescription || '';
-    if (d.includes('Auto-detected') || d.includes('editable places') || d.includes('SQLite memory') || !d) {
+    if (d.includes('Auto-detected') || d.includes('editable places') || d.includes('SQLite') || !d) {
       return 'Complete the required fields below. Responses are dynamically synchronized with your official document.';
     }
     return d;
-  }, [formDescription, isVisaDoc]);
+  }, [formDescription]);
 
   // Clean raw PDF OCR labels to handcrafted professional web form labels
   const getCleanLabel = (label = '') => {
@@ -224,6 +224,26 @@ export default function PreviewMode({
     setErrors({});
     setIsSubmitted(true);
     showToast('🎉 Form successfully submitted and data captured locally!');
+  };
+
+  const handleDownloadFilledPdf = async () => {
+    setIsDownloading(true);
+    showToast('⏳ Generating official PDF with your filled responses...');
+    try {
+      const fileName = await downloadFilledPdf({
+        documentId,
+        filename: documentName,
+        formData,
+        fields,
+        pdfFile
+      });
+      showToast(`🎉 Downloaded: ${fileName}`);
+    } catch (err) {
+      console.error('Download filled PDF error:', err);
+      showToast(`⚠️ Could not generate PDF: ${err.message}`);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const handleReset = () => {
@@ -734,6 +754,18 @@ export default function PreviewMode({
                   <Code className="w-3.5 h-3.5 text-slate-400" />
                   <span>Embed Code</span>
                 </button>
+                <div className="h-px bg-slate-100 my-1" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMoreMenu(false);
+                    handleDownloadFilledPdf();
+                  }}
+                  className="w-full text-left px-3.5 py-2 hover:bg-blue-50 flex items-center gap-2 text-blue-600 font-medium cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download Filled PDF</span>
+                </button>
               </div>
             )}
           </div>
@@ -901,7 +933,7 @@ export default function PreviewMode({
               </div>
             ) : (
               /* Success Submission Card */
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200/90 p-8 sm:p-12 text-center mb-4">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200/90 p-8 sm:p-12 text-center mb-4 animate-in fade-in zoom-in-95 duration-200">
                 <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-4 border border-emerald-200">
                   <CheckCircle2 className="w-7 h-7" />
                 </div>
@@ -912,7 +944,29 @@ export default function PreviewMode({
                   Your responses have been recorded and synchronized with the official PDF document layout.
                 </p>
 
-                <div className="flex justify-center gap-3">
+                {/* Primary Download Filled PDF Button */}
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
+                  <button
+                    type="button"
+                    onClick={handleDownloadFilledPdf}
+                    disabled={isDownloading}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs sm:text-sm font-semibold shadow-md shadow-blue-500/25 transition cursor-pointer active:scale-95 disabled:opacity-60"
+                  >
+                    {isDownloading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-white" />
+                        <span>Generating Filled PDF...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4 text-white" />
+                        <span>Download Filled PDF</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="flex justify-center gap-3 border-t border-slate-100 pt-5">
                   <button
                     type="button"
                     onClick={handleReset}
@@ -923,7 +977,7 @@ export default function PreviewMode({
                   <button
                     type="button"
                     onClick={onExitPreview}
-                    className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition cursor-pointer"
+                    className="px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition cursor-pointer"
                   >
                     Return to Editor
                   </button>
@@ -1026,17 +1080,48 @@ export default function PreviewMode({
                 )}
               </div>
             ) : (
-              <div className="bg-white rounded-3xl shadow-xl border border-slate-200/80 p-10 text-center">
+              <div className="bg-white rounded-3xl shadow-xl border border-slate-200/80 p-10 text-center animate-in fade-in zoom-in-95 duration-200">
                 <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
                 <h2 className="text-xl font-bold text-slate-900 mb-2">Form Completed!</h2>
                 <p className="text-xs text-slate-500 mb-6">All answers recorded successfully.</p>
-                <button
-                  type="button"
-                  onClick={onExitPreview}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold cursor-pointer"
-                >
-                  Return to Editor
-                </button>
+                
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
+                  <button
+                    type="button"
+                    onClick={handleDownloadFilledPdf}
+                    disabled={isDownloading}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-md shadow-blue-500/20 transition cursor-pointer active:scale-95 disabled:opacity-60"
+                  >
+                    {isDownloading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-white" />
+                        <span>Generating Filled PDF...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4 text-white" />
+                        <span>Download Filled PDF</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="flex justify-center gap-3 border-t border-slate-100 pt-4">
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
+                  >
+                    Restart
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onExitPreview}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
+                  >
+                    Return to Editor
+                  </button>
+                </div>
               </div>
             )}
           </div>

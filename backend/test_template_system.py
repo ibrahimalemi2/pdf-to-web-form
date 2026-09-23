@@ -1,7 +1,6 @@
 import os
 import sys
 import json
-import sqlite3
 import urllib.request
 import urllib.parse
 
@@ -10,7 +9,7 @@ BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
 
-from database import init_db, get_template_by_fingerprint, save_or_update_template, list_templates
+from database import init_db, get_template_by_fingerprint, save_or_update_template
 from template_matcher import compute_document_fingerprint
 from main import get_sample_assignment, list_templates_route
 

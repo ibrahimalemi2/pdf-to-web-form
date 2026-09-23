@@ -149,6 +149,72 @@ export function getDocumentPdfUrl(docId) {
   return `${API_BASE_URL}/document/${docId}/pdf`;
 }
 
+/**
+ * Fills the PDF document with submitted responses and triggers browser file download.
+ */
+export async function downloadFilledPdf({ documentId, filename, formData, fields, pdfFile = null }) {
+  let pdfBase64 = null;
+  if (pdfFile instanceof File || pdfFile instanceof Blob) {
+    try {
+      pdfBase64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const res = reader.result;
+          const base64 = typeof res === 'string' && res.includes(',') ? res.split(',')[1] : res;
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(pdfFile);
+      });
+    } catch (e) {
+      console.warn('Could not encode pdfFile to base64:', e);
+    }
+  }
+
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}/fill-pdf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        documentId,
+        filename,
+        formData,
+        fields,
+        pdfBase64
+      }),
+    });
+  } catch {
+    throw new Error(`Cannot reach backend at ${API_BASE_URL}. Please make sure the Python server is running.`);
+  }
+
+  if (!response.ok) {
+    let errorDetail = 'Failed to generate filled PDF';
+    try {
+      const errJson = await response.json();
+      if (errJson.detail) errorDetail = errJson.detail;
+    } catch {
+      // ignore
+    }
+    throw new Error(`${errorDetail} (Status ${response.status})`);
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const cleanName = filename ? `Filled_${filename.replace(/\.pdf$/i, '')}.pdf` : 'Filled_Document.pdf';
+  a.download = cleanName;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  }, 100);
+
+  return cleanName;
+}
+
 export default {
   API_BASE_URL,
   checkBackendHealth,
@@ -162,5 +228,7 @@ export default {
   deleteTemplate,
   getPageImageUrl,
   getDocumentPdfUrl,
+  downloadFilledPdf,
 };
+
 
