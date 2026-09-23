@@ -63,9 +63,22 @@ def generate_sample_pdf(output_path: Optional[str] = None):
     page.draw_rect((54, y + 8, 280, y + 36), color=(0.75, 0.75, 0.8), width=1)
     page.insert_text((64, y + 26), "September 13, 2026", fontsize=10, fontname="helv", color=(0.1, 0.1, 0.1))
 
-    # 6. Consent & Signature
-    y = 520
-    page.insert_text((54, y), "07. Authorized Signature:", fontsize=10, fontname="hebo", color=(0.2, 0.2, 0.2))
+    # 6. Enrollment Status (Checkbox Group)
+    y = 515
+    page.insert_text((54, y), "07. Enrollment Status:", fontsize=10, fontname="hebo", color=(0.2, 0.2, 0.2))
+    # Option 1: Full-Time
+    page.draw_rect((54, y + 10, 66, y + 22), color=(0.25, 0.25, 0.25), width=1)
+    page.insert_text((72, y + 20), "Full-Time", fontsize=9, fontname="helv", color=(0.2, 0.2, 0.2))
+    # Option 2: Part-Time
+    page.draw_rect((150, y + 10, 162, y + 22), color=(0.25, 0.25, 0.25), width=1)
+    page.insert_text((168, y + 20), "Part-Time", fontsize=9, fontname="helv", color=(0.2, 0.2, 0.2))
+    # Option 3: Auditing
+    page.draw_rect((246, y + 10, 258, y + 22), color=(0.25, 0.25, 0.25), width=1)
+    page.insert_text((264, y + 20), "Auditing", fontsize=9, fontname="helv", color=(0.2, 0.2, 0.2))
+
+    # 7. Consent & Signature
+    y = 580
+    page.insert_text((54, y), "08. Authorized Signature:", fontsize=10, fontname="hebo", color=(0.2, 0.2, 0.2))
     page.draw_rect((54, y + 8, 558, y + 60), color=(0.75, 0.75, 0.8), width=1)
     page.insert_text((64, y + 36), "Dr. Evelyn Martinez [Signed Digitally]", fontsize=10, fontname="helv", color=(0.1, 0.3, 0.6))
 

@@ -467,7 +467,6 @@ export default function App() {
 
     setFields(prev => [...prev, newField]);
     setSelectedFieldId(newId);
-    setIsPropertyPanelOpen(true);
     showToast(`✨ Created editable field: ${newField.label}`);
   };
 
@@ -548,10 +547,15 @@ export default function App() {
     setFields(newFields);
   };
 
-  // Select field and open property inspector
+  // Select field and open property inspector (when clicking form canvas boxes)
   const handleSelectField = (id) => {
     setSelectedFieldId(id);
     setIsPropertyPanelOpen(true);
+  };
+
+  // Select field without opening property inspector (when arranging boxes on PDF viewer or connector lines)
+  const handleSelectFieldSilent = (id) => {
+    setSelectedFieldId(id);
   };
 
   const handlePublish = () => {
@@ -694,7 +698,7 @@ export default function App() {
           fields={fields}
           selectedFieldId={selectedFieldId}
           hoveredFieldId={hoveredFieldId}
-          onSelectField={handleSelectField}
+          onSelectField={handleSelectFieldSilent}
           visible={showConnectors && activeTab === 'design'}
         />
 
@@ -723,7 +727,7 @@ export default function App() {
           selectedFieldId={selectedFieldId}
           hoveredFieldId={hoveredFieldId}
           onHoverField={setHoveredFieldId}
-          onSelectField={handleSelectField}
+          onSelectField={handleSelectFieldSilent}
           onUpdateField={handleUpdateField}
           onDeleteField={handleDeleteField}
           onAddFieldWithCoords={handleAddFieldWithCoords}

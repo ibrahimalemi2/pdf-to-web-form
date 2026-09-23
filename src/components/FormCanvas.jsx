@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   GripVertical,
   Lock,
@@ -142,6 +142,7 @@ export default function FormCanvas({
   const [labelDraft, setLabelDraft] = useState('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(formTitle);
+  const justDraggedRef = useRef(false);
 
   // Synchronize titleDraft when formTitle updates
   useEffect(() => {
@@ -270,6 +271,7 @@ export default function FormCanvas({
 
   // Drag and drop handlers for reordering boxes anywhere
   const handleDragStart = (e, index) => {
+    justDraggedRef.current = true;
     setDraggedIndex(index);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', index.toString());
@@ -293,6 +295,9 @@ export default function FormCanvas({
         onAddField(textData);
       }
       setDropTargetIndex(null);
+      setTimeout(() => {
+        justDraggedRef.current = false;
+      }, 120);
       return;
     }
 
@@ -305,11 +310,17 @@ export default function FormCanvas({
 
     setDraggedIndex(null);
     setDropTargetIndex(null);
+    setTimeout(() => {
+      justDraggedRef.current = false;
+    }, 120);
   };
 
   const handleDragEnd = () => {
     setDraggedIndex(null);
     setDropTargetIndex(null);
+    setTimeout(() => {
+      justDraggedRef.current = false;
+    }, 120);
   };
 
   // Quick type changer handler (e.g. convert to Choices, Text Box, Date, Checkbox, etc.)
@@ -692,7 +703,10 @@ export default function FormCanvas({
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDrop={(e) => handleDrop(e, index)}
                 onDragEnd={handleDragEnd}
-                onClick={() => onSelectField(field.id)}
+                onClick={() => {
+                  if (justDraggedRef.current) return;
+                  onSelectField(field.id);
+                }}
                 onContextMenu={(e) => handleContextMenu(e, field, index)}
                 onMouseEnter={() => {
                   onHoverField?.(field.id);
@@ -873,6 +887,7 @@ export default function FormCanvas({
                     <div 
                       title="Drag handle: drag this box to any position (1st, 2nd, last, etc.)"
                       className="cursor-grab active:cursor-grabbing p-0.5 hover:bg-slate-200/60 rounded shrink-0"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <GripVertical className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 transition-colors" />
                     </div>

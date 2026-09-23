@@ -135,12 +135,87 @@ export async function extractClientFieldsFromPdf(pdfDoc, pageNumber = 1) {
     const detected = [];
     let counter = 1;
 
-    // Pattern matching on client
-    const LABEL_KEYS = [
-      "course title", "instructor", "assignment number", "section",
-      "program", "student name", "roll no", "release date", "submission date",
-      "due date", "answer 1", "answer 2"
-    ];
+    // 1. Client-side visual checkbox detection
+    const cbChars = new Set(["☐", "☑", "☒", "\u25a1", "\u25a2", "\u25a0", "\u25aa", "\u25ab", "\u25fd", "\u25fe", "\u2751", "\u2752", "\x86", "\x87", "\xa8", "\xfe", "\xfc"]);
+    const isCbItem = (it) => {
+      const f = (it.fontName || '').toLowerCase();
+      return f.includes('wing') || f.includes('webd') || f.includes('ding') || Array.from(it.text).some(c => cbChars.has(c));
+    };
+
+    const cbItems = items.filter(isCbItem);
+    if (cbItems.length > 0) {
+      const cbRows = [];
+      cbItems.forEach(cb => {
+        let row = cbRows.find(r => Math.abs(r.y0 - cb.y0) < 8);
+        if (row) {
+          row.items.push(cb);
+        } else {
+          cbRows.push({ y0: cb.y0, items: [cb] });
+        }
+      });
+
+      cbRows.forEach(row => {
+        row.items.sort((a, b) => a.x0 - b.x0);
+        const firstCb = row.items[0];
+        const precedingText = items.filter(it => !isCbItem(it) && it.x1 <= firstCb.x0 + 4 && Math.abs(it.y0 - row.y0) < 10);
+        let groupLabel = precedingText.map(t => t.text).join(' ').replace(':', '').trim();
+        if (!groupLabel) {
+          const aboveText = items.filter(it => !isCbItem(it) && row.y0 - it.y1 > 0 && row.y0 - it.y1 < 20 && Math.abs(it.x0 - firstCb.x0) < 100);
+          groupLabel = aboveText.map(t => t.text).join(' ').replace(':', '').trim();
+        }
+
+        const options = [];
+        const optionsCoords = [];
+
+        row.items.forEach((cb, idx) => {
+          const nextCbX = row.items[idx + 1] ? row.items[idx + 1].x0 : 9999;
+          const optTexts = items.filter(it => !isCbItem(it) && it.x0 >= cb.x1 - 4 && it.x0 < nextCbX && Math.abs(it.y0 - row.y0) < 10);
+          const optLabel = optTexts.map(t => t.text).join(' ').trim() || `Option ${idx + 1}`;
+          options.push(optLabel);
+          optionsCoords.push({
+            label: optLabel,
+            x: `${((cb.x0 / pageW) * 100).toFixed(2)}%`,
+            y: `${((cb.y0 / pageH) * 100).toFixed(2)}%`,
+            w: `${((Math.max(12, cb.w) / pageW) * 100).toFixed(2)}%`,
+            h: `${((Math.max(12, cb.h) / pageH) * 100).toFixed(2)}%`
+          });
+        });
+
+        if (!groupLabel) {
+          groupLabel = options.length === 1 ? options[0] : `Choice Group ${counter}`;
+        }
+
+        const minX = Math.min(...row.items.map(i => i.x0));
+        const maxX = Math.max(...row.items.map(i => i.x1 + 60));
+        const minH = 24;
+
+        detected.push({
+          id: `field_client_cb_${pageNumber}_${counter}`,
+          label: groupLabel,
+          type: 'Checkbox',
+          value: '',
+          page: pageNumber,
+          options,
+          optionsCoordinates: optionsCoords,
+          multipleChoices: false,
+          choicesPerRow: options.length <= 4 ? 2 : 3,
+          tickFormat: 'Tick',
+          tickColor: '#000000',
+          columnSpan: 2,
+          pdfMapping: {
+            page: pageNumber,
+            badgeW: (maxX - minX).toFixed(1),
+            badgeH: minH.toFixed(1),
+            x: `${((minX / pageW) * 100).toFixed(1)}%`,
+            y: `${((row.y0 / pageH) * 100).toFixed(1)}%`,
+            w: `${(((maxX - minX) / pageW) * 100).toFixed(1)}%`,
+            h: `${((minH / pageH) * 100).toFixed(1)}%`,
+            optionsCoordinates: optionsCoords
+          }
+        });
+        counter++;
+      });
+    }
 
     for (let i = 0; i < items.length; i++) {
       const it = items[i];

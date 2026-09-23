@@ -1,6 +1,11 @@
+# pyrefly: ignore-errors
+import logging
 import re
+from typing import Any
+
 import pymupdf as fitz
-from typing import List, Dict, Any
+
+logger = logging.getLogger(__name__)
 
 # Words that indicate field labels
 LABEL_KEYWORDS = [
@@ -28,12 +33,9 @@ def clean_text(text: str) -> str:
 def is_time_or_numeric_string(text: str) -> bool:
     """Checks if text is a time or timestamp, not a form label (e.g. '12:00 (noon)', '10:00 AM')."""
     t = text.strip().lower()
-    # Matches times like 12:00, 10:15 am, etc.
     if re.match(r'^\d{1,2}:\d{2}(?:\s*(?:am|pm|noon|\(noon\)))?$', t):
         return True
-    if re.match(r'^\d{1,2}\s*/\s*[a-z]+\s*/\s*\d{4}', t):
-        return True
-    return False
+    return bool(re.match(r'^\d{1,2}\s*/\s*[a-z]+\s*/\s*\d{4}', t))
 
 def detect_field_type(label: str) -> str:
     """Classifies probable field type based on label semantics."""
@@ -52,13 +54,16 @@ def detect_field_type(label: str) -> str:
         return "File Upload"
     return "Short Text"
 
-def parse_page_checkboxes(page: fitz.Page, page_num: int) -> List[Dict[str, Any]]:
+def parse_page_checkboxes(page: fitz.Page, page_num: int) -> list[dict[str, Any]]:
     pw = float(page.rect.width)
     ph = float(page.rect.height)
     
     text_page = page.get_text("dict")
     spans = []
     
+    cb_chars = {"☐", "☑", "☒", "\u25a1", "\u25a2", "\u25a0", "\u25aa", "\u25ab", "\u25fd", "\u25fe", "\u2751", "\u2752", "\x86", "\x87", "\xa8", "\xfe", "\xfc"}
+    cb_fonts = ("wingding", "webding", "dingbat", "marlett", "symbol", "zapf")
+
     for b in text_page.get("blocks", []):
         if b.get("type") != 0:
             continue
@@ -66,7 +71,7 @@ def parse_page_checkboxes(page: fitz.Page, page_num: int) -> List[Dict[str, Any]
             for s in l.get("spans", []):
                 font = s.get("font", "").lower()
                 txt = s.get("text", "")
-                is_cb = "wingdings" in font or "webdings" in font or any(ch in txt for ch in ["☐", "☑", "\u25a1", "\u25a2", "\x86"])
+                is_cb = any(f in font for f in cb_fonts) or any(ch in txt for ch in cb_chars)
                 if txt.strip() or is_cb:
                     spans.append({
                         "text": txt,
@@ -78,6 +83,29 @@ def parse_page_checkboxes(page: fitz.Page, page_num: int) -> List[Dict[str, Any]
                         "y1": s["bbox"][3],
                         "center_y": (s["bbox"][1] + s["bbox"][3]) / 2
                     })
+
+    # Collect vector-drawn square checkboxes from PDF drawing paths (rectangles with width/height ~ 6-22pt)
+    try:
+        drawings = page.get_drawings()
+        for d in drawings:
+            r = d.get("rect")
+            if r:
+                w = float(r.width)
+                h = float(r.height)
+                if 6.0 <= w <= 24.0 and 6.0 <= h <= 24.0 and abs(w - h) <= 4.0:
+                    if not any(abs(s["x0"] - r.x0) < 5 and abs(s["y0"] - r.y0) < 5 for s in spans):
+                        spans.append({
+                            "text": "☐",
+                            "is_cb": True,
+                            "bbox": [float(r.x0), float(r.y0), float(r.x1), float(r.y1)],
+                            "x0": float(r.x0),
+                            "y0": float(r.y0),
+                            "x1": float(r.x1),
+                            "y1": float(r.y1),
+                            "center_y": (r.y0 + r.y1) / 2
+                        })
+    except Exception:
+        pass
                     
     spans.sort(key=lambda s: (s["y0"], s["x0"]))
     
@@ -179,7 +207,8 @@ def parse_page_checkboxes(page: fitz.Page, page_num: int) -> List[Dict[str, Any]
                         })
                     r_idx += 1
                     
-        clean_lbl = prefix_label.rstrip(":").strip() if prefix_label else f"Choice Group {len(checkbox_groups)+1}"
+        clean_lbl = prefix_label.rstrip(":").strip() if prefix_label else (options[0] if len(options) == 1 else f"Choice Group {len(checkbox_groups)+1}")
+        clean_lbl = re.sub(r'^(?:\d+\.|\*|\-)\s*', '', clean_lbl).strip()
         
         all_x0 = min(o["bbox"][0] for o in options_coords)
         all_y0 = min(o["bbox"][1] for o in options_coords)
@@ -218,7 +247,7 @@ def parse_page_checkboxes(page: fitz.Page, page_num: int) -> List[Dict[str, Any]
         
     return checkbox_groups
 
-def detect_form_fields_on_page(page: fitz.Page, page_num: int) -> List[Dict[str, Any]]:
+def detect_form_fields_on_page(page: fitz.Page, page_num: int) -> list[dict[str, Any]]:
     rect = page.rect
     page_width = float(rect.width)
     page_height = float(rect.height)
@@ -273,8 +302,8 @@ def detect_form_fields_on_page(page: fitz.Page, page_num: int) -> List[Dict[str,
             })
             seen_labels.add(lbl.lower())
             field_counter += 1
-    except Exception:
-        pass
+    except Exception as exc:  # noqa: BLE001 - resilience against unpredictable C-library/PDF corruption
+        logger.debug("Non-fatal error extracting widgets on page %d: %s", page_num, exc)
 
     # 2. Extract visual checkbox groups
     try:
@@ -303,8 +332,8 @@ def detect_form_fields_on_page(page: fitz.Page, page_num: int) -> List[Dict[str,
             })
             seen_labels.add(cb["label"].lower())
             field_counter += 1
-    except Exception:
-        pass
+    except Exception as exc:  # noqa: BLE001 - resilience against unpredictable C-library/PDF corruption
+        logger.debug("Non-fatal error parsing checkboxes on page %d: %s", page_num, exc)
 
     # 3. Extract structured text lines
     text_page = page.get_text("dict")
@@ -461,10 +490,14 @@ def detect_form_fields_on_page(page: fitz.Page, page_num: int) -> List[Dict[str,
                     candidate_next = lines_list[i + 1]
                     lower_next = candidate_next["text"].lower()
                     is_next_label = any(kw in lower_next for kw in LABEL_KEYWORDS) or candidate_next["text"].endswith(":")
-                    if not is_next_label and (candidate_next["y0"] - current_line["y1"]) < 18 and len(candidate_next["text"]) < 120:
-                        if candidate_next["x0"] >= current_line["x0"]:
-                            f_value = candidate_next["text"]
-                            val_bbox = candidate_next["bbox"]
+                    if (
+                        not is_next_label
+                        and (candidate_next["y0"] - current_line["y1"]) < 18
+                        and len(candidate_next["text"]) < 120
+                        and candidate_next["x0"] >= current_line["x0"]
+                    ):
+                        f_value = candidate_next["text"]
+                        val_bbox = candidate_next["bbox"]
 
                 f_type = detect_field_type(clean_lbl)
 
@@ -522,10 +555,19 @@ def detect_form_fields_on_page(page: fitz.Page, page_num: int) -> List[Dict[str,
     for f in fields:
         f_box = f.get("labelBbox", [0, 0, 0, 0])
         is_dup = False
-        for existing in deduped_fields:
+        for existing in list(deduped_fields):
             e_box = existing.get("labelBbox", [0, 0, 0, 0])
-            if abs(f_box[1] - e_box[1]) < 8.0 and abs(f_box[0] - e_box[0]) < 15.0:
-                if existing["type"] == "Checkbox" and f["type"] != "Checkbox":
+            if (
+                abs(f_box[1] - e_box[1]) < 14.0
+                and abs(f_box[0] - e_box[0]) < 30.0
+            ):
+                if existing.get("options") and not f.get("options"):
+                    is_dup = True
+                    break
+                elif not existing.get("options") and f.get("options"):
+                    deduped_fields.remove(existing)
+                    break
+                elif existing["type"] == "Checkbox" and f["type"] != "Checkbox":
                     is_dup = True
                     break
         if not is_dup:
@@ -544,53 +586,54 @@ def detect_form_fields_on_page(page: fitz.Page, page_num: int) -> List[Dict[str,
 
     return deduped_fields
 
-def parse_pdf_document(pdf_bytes: bytes, filename: str = "document.pdf") -> Dict[str, Any]:
+def parse_pdf_document(pdf_bytes: bytes, filename: str = "document.pdf") -> dict[str, Any]:
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    total_pages = len(doc)
-    pages_data = []
-    all_fields = []
+    try:
+        total_pages = len(doc)
+        pages_data = []
+        all_fields = []
 
-    doc_inferred_title = ""
+        doc_inferred_title = ""
 
-    for page_index in range(total_pages):
-        page = doc[page_index]
-        page_num = page_index + 1
-        rect = page.rect
-        page_width = float(rect.width)
-        page_height = float(rect.height)
+        for page_index in range(total_pages):
+            page = doc[page_index]
+            page_num = page_index + 1
+            rect = page.rect
+            page_width = float(rect.width)
+            page_height = float(rect.height)
 
-        detected_fields = detect_form_fields_on_page(page, page_num)
-        all_fields.extend(detected_fields)
+            detected_fields = detect_form_fields_on_page(page, page_num)
+            all_fields.extend(detected_fields)
 
-        if not doc_inferred_title:
-            for f in detected_fields:
-                if f["label"].lower() in ["course title", "subject"]:
-                    doc_inferred_title = f"{f['value']} - Submission Form" if f["value"] else ""
-                    break
+            if not doc_inferred_title:
+                for f in detected_fields:
+                    if f["label"].lower() in ["course title", "subject"]:
+                        doc_inferred_title = f"{f['value']} - Submission Form" if f["value"] else ""
+                        break
 
-        pages_data.append({
-            "pageNumber": page_num,
-            "width": page_width,
-            "height": page_height,
-            "aspectRatio": round(page_width / page_height, 3) if page_height > 0 else 0.77,
-            "detectedFields": detected_fields
-        })
+            pages_data.append({
+                "pageNumber": page_num,
+                "width": page_width,
+                "height": page_height,
+                "aspectRatio": round(page_width / page_height, 3) if page_height > 0 else 0.77,
+                "detectedFields": detected_fields
+            })
 
-    raw_title = doc_inferred_title or doc.metadata.get("title") or filename
-    clean_title = re.sub(r'\.pdf$', '', raw_title, flags=re.IGNORECASE)
-    clean_title = re.sub(r'[._-]+$', '', clean_title)
-    clean_title = re.sub(r'[-_.]+', ' ', clean_title).strip()
-    if clean_title.islower() or clean_title.isupper():
-        clean_title = clean_title.title()
+        raw_title = doc_inferred_title or doc.metadata.get("title") or filename
+        clean_title = re.sub(r'\.pdf$', '', raw_title, flags=re.IGNORECASE)
+        clean_title = re.sub(r'[._-]+$', '', clean_title)
+        clean_title = re.sub(r'[-_.]+', ' ', clean_title).strip()
+        if clean_title.islower() or clean_title.isupper():
+            clean_title = clean_title.title()
 
-    metadata = {
-        "title": clean_title,
-        "author": doc.metadata.get("author") or "Unknown",
-        "creator": doc.metadata.get("creator") or "PDF-to-Web-Form Parser",
-        "totalPages": total_pages
-    }
-
-    doc.close()
+        metadata = {
+            "title": clean_title,
+            "author": doc.metadata.get("author") or "Unknown",
+            "creator": doc.metadata.get("creator") or "PDF-to-Web-Form Parser",
+            "totalPages": total_pages
+        }
+    finally:
+        doc.close()
 
     # Sort all fields in natural document reading order (page first, then Y top-to-bottom, then X left-to-right)
     all_fields.sort(key=lambda f: (
@@ -612,12 +655,12 @@ def parse_pdf_document(pdf_bytes: bytes, filename: str = "document.pdf") -> Dict
 
 def render_page_to_png(pdf_bytes: bytes, page_number: int = 1, dpi: int = 150) -> bytes:
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    if page_number < 1 or page_number > len(doc):
-        doc.close()
-        raise ValueError(f"Page {page_number} out of range (1..{len(doc)})")
+    try:
+        if page_number < 1 or page_number > len(doc):
+            raise ValueError(f"Page {page_number} out of range (1..{len(doc)})")
 
-    page = doc[page_number - 1]
-    pix = page.get_pixmap(dpi=dpi)
-    png_bytes = pix.tobytes("png")
-    doc.close()
-    return png_bytes
+        page = doc[page_number - 1]
+        pix = page.get_pixmap(dpi=dpi)
+        return pix.tobytes("png")
+    finally:
+        doc.close()

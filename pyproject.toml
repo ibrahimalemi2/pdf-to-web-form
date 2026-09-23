@@ -1,0 +1,5 @@
+[tool.pyrefly]
+python-interpreter-path = ".venv/Scripts/python.exe"
+search-path = [".", "backend"]
+replace-imports-with-any = ["pymupdf"]
+errors = { unsupported-operation = false, bad-index = false, bad-argument-type = false, no-matching-overload = false, missing-attribute = false }

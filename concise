@@ -1,0 +1,731 @@
+ERROR No matching overload found for function `round` called with arguments: (str | Unknown, Literal[2]) [no-matching-overload]
+   --> backend\pdf_parser.py:203:32
+    |
+203 |             "inputBbox": [round(all_x0, 2), round(all_y0, 2), round(all_x1, 2), round(all_y1, 2)],
+    |                                ^^^^^^^^^^^
+  Possible overloads:
+    (number: _SupportsRound1[_T], ndigits: None = None) -> _T
+    (number: _SupportsRound2[_T], ndigits: SupportsIndex) -> _T [closest match]
+  Argument `str | Unknown` is not assignable to parameter `number` with type `_SupportsRound2[@_]` in function `round`
+ERROR No matching overload found for function `round` called with arguments: (str | Unknown, Literal[2]) [no-matching-overload]
+   --> backend\pdf_parser.py:203:50
+    |
+203 |             "inputBbox": [round(all_x0, 2), round(all_y0, 2), round(all_x1, 2), round(all_y1, 2)],
+    |                                                  ^^^^^^^^^^^
+  Possible overloads:
+    (number: _SupportsRound1[_T], ndigits: None = None) -> _T
+    (number: _SupportsRound2[_T], ndigits: SupportsIndex) -> _T [closest match]
+  Argument `str | Unknown` is not assignable to parameter `number` with type `_SupportsRound2[@_]` in function `round`
+ERROR No matching overload found for function `round` called with arguments: (str | Unknown, Literal[2]) [no-matching-overload]
+   --> backend\pdf_parser.py:203:68
+    |
+203 |             "inputBbox": [round(all_x0, 2), round(all_y0, 2), round(all_x1, 2), round(all_y1, 2)],
+    |                                                                    ^^^^^^^^^^^
+  Possible overloads:
+    (number: _SupportsRound1[_T], ndigits: None = None) -> _T
+    (number: _SupportsRound2[_T], ndigits: SupportsIndex) -> _T [closest match]
+  Argument `str | Unknown` is not assignable to parameter `number` with type `_SupportsRound2[@_]` in function `round`
+ERROR No matching overload found for function `round` called with arguments: (str | Unknown, Literal[2]) [no-matching-overload]
+   --> backend\pdf_parser.py:203:86
+    |
+203 |             "inputBbox": [round(all_x0, 2), round(all_y0, 2), round(all_x1, 2), round(all_y1, 2)],
+    |                                                                                      ^^^^^^^^^^^
+  Possible overloads:
+    (number: _SupportsRound1[_T], ndigits: None = None) -> _T
+    (number: _SupportsRound2[_T], ndigits: SupportsIndex) -> _T [closest match]
+  Argument `str | Unknown` is not assignable to parameter `number` with type `_SupportsRound2[@_]` in function `round`
+ERROR `-` is not supported between `str` and `str` [unsupported-operation]
+   --> backend\pdf_parser.py:205:48
+    |
+205 |             "inputDimensions": {"width": round(all_x1 - all_x0, 2), "height": round(all_y1 - all_y0, 2)},
+    |                                                ------^^^------
+    |                                                |        |
+    |                                                |        has type `str`
+    |                                                has type `str`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `-` is not supported between `str` and `str` [unsupported-operation]
+   --> backend\pdf_parser.py:205:85
+    |
+205 |             "inputDimensions": {"width": round(all_x1 - all_x0, 2), "height": round(all_y1 - all_y0, 2)},
+    |                                                                                     ------^^^------
+    |                                                                                     |        |
+    |                                                                                     |        has type `str`
+    |                                                                                     has type `str`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `/` is not supported between `str` and `float` [unsupported-operation]
+   --> backend\pdf_parser.py:208:32
+    |
+208 |                 "x": f"{round((all_x0 / pw) * 100, 2)}%",
+    |                                ------^^^--
+    |                                |        |
+    |                                |        has type `float`
+    |                                has type `str`
+  Argument `str` is not assignable to parameter `value` with type `float` in function `float.__rtruediv__`
+ERROR `/` is not supported between `str` and `float` [unsupported-operation]
+   --> backend\pdf_parser.py:209:32
+    |
+209 |                 "y": f"{round((all_y0 / ph) * 100, 2)}%",
+    |                                ------^^^--
+    |                                |        |
+    |                                |        has type `float`
+    |                                has type `str`
+  Argument `str` is not assignable to parameter `value` with type `float` in function `float.__rtruediv__`
+ERROR `-` is not supported between `str` and `str` [unsupported-operation]
+   --> backend\pdf_parser.py:210:33
+    |
+210 |                 "w": f"{round(((all_x1 - all_x0) / pw) * 100, 2)}%",
+    |                                 ------^^^------
+    |                                 |        |
+    |                                 |        has type `str`
+    |                                 has type `str`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `-` is not supported between `str` and `str` [unsupported-operation]
+   --> backend\pdf_parser.py:211:33
+    |
+211 |                 "h": f"{round(((all_y1 - all_y0) / ph) * 100, 2)}%",
+    |                                 ------^^^------
+    |                                 |        |
+    |                                 |        has type `str`
+    |                                 has type `str`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `/` is not supported between `str` and `float` [unsupported-operation]
+   --> backend\pdf_parser.py:212:38
+    |
+212 |                 "targetX": f"{round((all_x0 / pw) * 100, 2)}%",
+    |                                      ------^^^--
+    |                                      |        |
+    |                                      |        has type `float`
+    |                                      has type `str`
+  Argument `str` is not assignable to parameter `value` with type `float` in function `float.__rtruediv__`
+ERROR `/` is not supported between `str` and `float` [unsupported-operation]
+   --> backend\pdf_parser.py:213:38
+    |
+213 |                 "targetY": f"{round((all_y0 / ph) * 100, 2)}%",
+    |                                      ------^^^--
+    |                                      |        |
+    |                                      |        has type `float`
+    |                                      has type `str`
+  Argument `str` is not assignable to parameter `value` with type `float` in function `float.__rtruediv__`
+ERROR `-` is not supported between `str` and `str` [unsupported-operation]
+   --> backend\pdf_parser.py:214:39
+    |
+214 |                 "targetW": f"{round(((all_x1 - all_x0) / pw) * 100, 2)}%",
+    |                                       ------^^^------
+    |                                       |        |
+    |                                       |        has type `str`
+    |                                       has type `str`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `-` is not supported between `str` and `str` [unsupported-operation]
+   --> backend\pdf_parser.py:215:39
+    |
+215 |                 "targetH": f"{round(((all_y1 - all_y0) / ph) * 100, 2)}%"
+    |                                       ------^^^------
+    |                                       |        |
+    |                                       |        has type `str`
+    |                                       has type `str`
+  Cannot find `__sub__` or `__rsub__`
+ERROR No attribute `PDF_WIDGET_TYPE_TEXT` in module `pymupdf` [missing-attribute]
+   --> backend\pdf_parser.py:239:32
+    |
+239 |             if w.field_type == fitz.PDF_WIDGET_TYPE_TEXT:
+    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^
+ERROR No attribute `PDF_WIDGET_TYPE_CHECKBOX` in module `pymupdf` [missing-attribute]
+   --> backend\pdf_parser.py:241:34
+    |
+241 |             elif w.field_type == fitz.PDF_WIDGET_TYPE_CHECKBOX:
+    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ERROR No attribute `PDF_WIDGET_TYPE_LISTBOX` in module `pymupdf` [missing-attribute]
+   --> backend\pdf_parser.py:243:35
+    |
+243 |             elif w.field_type in (fitz.PDF_WIDGET_TYPE_LISTBOX, fitz.PDF_WIDGET_TYPE_COMBOBOX):
+    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ERROR No attribute `PDF_WIDGET_TYPE_COMBOBOX` in module `pymupdf` [missing-attribute]
+   --> backend\pdf_parser.py:243:65
+    |
+243 |             elif w.field_type in (fitz.PDF_WIDGET_TYPE_LISTBOX, fitz.PDF_WIDGET_TYPE_COMBOBOX):
+    |                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ERROR No attribute `PDF_WIDGET_TYPE_SIGNATURE` in module `pymupdf` [missing-attribute]
+   --> backend\pdf_parser.py:245:34
+    |
+245 |             elif w.field_type == fitz.PDF_WIDGET_TYPE_SIGNATURE:
+    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ERROR Argument `list[Unknown] | str | Unknown` is not assignable to parameter `text` with type `str` in function `is_time_or_numeric_string` [bad-argument-type]
+   --> backend\pdf_parser.py:343:38
+    |
+343 |         if is_time_or_numeric_string(txt):
+    |                                      ^^^
+ERROR No matching overload found for function `re.match` called with arguments: (Literal['^(?:answer|response|solution)\\s*\\d*[:.]?$'], list[Unknown] | str | Unknown, Literal[RegexFlag.I]) [no-matching-overload]
+   --> backend\pdf_parser.py:348:41
+    |
+348 |         is_answer_header = bool(re.match(r'^(?:answer|response|solution)\s*\d*[:.]?$', txt, re.IGNORECASE))
+    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Possible overloads:
+    (pattern: Pattern[str] | str, string: str, flags: _FlagsType = 0) -> Match[str] | None [closest match]
+    (pattern: Pattern[bytes] | bytes, string: Buffer, flags: _FlagsType = 0) -> Match[bytes] | None
+  Argument `list[Unknown] | str | Unknown` is not assignable to parameter `string` with type `str` in function `re.match`
+ERROR Object of class `list` has no attribute `rstrip` [missing-attribute]
+   --> backend\pdf_parser.py:351:25
+    |
+351 |             ans_label = txt.rstrip(":").strip()
+    |                         ^^^^^^^^^^
+ERROR `+` is not supported between `list[Unknown]` and `Literal[2]` [unsupported-operation]
+   --> backend\pdf_parser.py:356:22
+    |
+356 |             min_y0 = current_line["y1"] + 2
+    |                      ------------------^^^-
+    |                      |                    |
+    |                      |                    has type `Literal[2]`
+    |                      has type `list[Unknown]`
+  No matching overload found for function `list.__add__` called with arguments: (Literal[2])
+  Possible overloads:
+    (value: list[Unknown], /) -> list[Unknown] [closest match]
+    (value: list[_S], /) -> list[_S | Unknown]
+  Argument `Literal[2]` is not assignable to parameter `value` with type `list[Unknown]` in function `list.__add__`
+ERROR `+` is not supported between `str` and `Literal[2]` [unsupported-operation]
+   --> backend\pdf_parser.py:356:22
+    |
+356 |             min_y0 = current_line["y1"] + 2
+    |                      ------------------^^^-
+    |                      |                    |
+    |                      |                    has type `Literal[2]`
+    |                      has type `str`
+  No matching overload found for function `str.__add__` called with arguments: (Literal[2])
+  Possible overloads:
+    (value: LiteralString, /) -> LiteralString
+    (value: str, /) -> str [closest match]
+  Argument `Literal[2]` is not assignable to parameter `value` with type `str` in function `str.__add__`
+ERROR No matching overload found for function `re.match` called with arguments: (Literal['^(?:question|answer|section|part)\\s*\\d*[:.]?'], list[Unknown] | str | Unknown, Literal[RegexFlag.I]) [no-matching-overload]
+   --> backend\pdf_parser.py:361:28
+    |
+361 |                 if re.match(r'^(?:question|answer|section|part)\s*\d*[:.]?', next_l["text"], re.IGNORECASE):
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Possible overloads:
+    (pattern: Pattern[str] | str, string: str, flags: _FlagsType = 0) -> Match[str] | None [closest match]
+    (pattern: Pattern[bytes] | bytes, string: Buffer, flags: _FlagsType = 0) -> Match[bytes] | None
+  Argument `list[Unknown] | str | Unknown` is not assignable to parameter `string` with type `str` in function `re.match`
+ERROR No matching overload found for function `str.join` called with arguments: (list[list[Unknown] | str | Unknown]) [no-matching-overload]
+   --> backend\pdf_parser.py:369:33
+    |
+369 |             ans_value = " ".join(ans_lines)
+    |                                 ^^^^^^^^^^^
+  Possible overloads:
+    (iterable: Iterable[LiteralString], /) -> LiteralString [closest match]
+    (iterable: Iterable[str], /) -> str
+  Argument `list[list[Unknown] | str | Unknown]` is not assignable to parameter `iterable` with type `Iterable[LiteralString]` in function `str.join`
+ERROR `-` is not supported between `list[Unknown]` and `float` [unsupported-operation]
+   --> backend\pdf_parser.py:370:35
+    |
+370 |             target_x0 = max(20.0, min_x0 - 6.0)
+    |                                   ------^^^---
+    |                                   |        |
+    |                                   |        has type `float`
+    |                                   has type `list[Unknown]`
+  Argument `list[Unknown]` is not assignable to parameter `value` with type `float` in function `float.__rsub__`
+ERROR `-` is not supported between `str` and `float` [unsupported-operation]
+   --> backend\pdf_parser.py:370:35
+    |
+370 |             target_x0 = max(20.0, min_x0 - 6.0)
+    |                                   ------^^^---
+    |                                   |        |
+    |                                   |        has type `float`
+    |                                   has type `str`
+  Argument `str` is not assignable to parameter `value` with type `float` in function `float.__rsub__`
+ERROR `+` is not supported between `list[Unknown]` and `float` [unsupported-operation]
+   --> backend\pdf_parser.py:372:52
+    |
+372 |             target_x1 = min(page_width - 20.0, max(max_x1 + 10.0, target_x0 + 350.0))
+    |                                                    ------^^^----
+    |                                                    |        |
+    |                                                    |        has type `float`
+    |                                                    has type `list[Unknown]`
+  No matching overload found for function `list.__add__` called with arguments: (float)
+  Possible overloads:
+    (value: list[Unknown], /) -> list[Unknown] [closest match]
+    (value: list[_S], /) -> list[_S | Unknown]
+  Argument `float` is not assignable to parameter `value` with type `list[Unknown]` in function `list.__add__`
+ERROR `+` is not supported between `str` and `float` [unsupported-operation]
+   --> backend\pdf_parser.py:372:52
+    |
+372 |             target_x1 = min(page_width - 20.0, max(max_x1 + 10.0, target_x0 + 350.0))
+    |                                                    ------^^^----
+    |                                                    |        |
+    |                                                    |        has type `float`
+    |                                                    has type `str`
+  No matching overload found for function `str.__add__` called with arguments: (float)
+  Possible overloads:
+    (value: LiteralString, /) -> LiteralString
+    (value: str, /) -> str [closest match]
+  Argument `float` is not assignable to parameter `value` with type `str` in function `str.__add__`
+ERROR `+` is not supported between `list[Unknown]` and `float` [unsupported-operation]
+   --> backend\pdf_parser.py:373:47
+    |
+373 |             target_y1 = max(target_y0 + 55.0, max_y1 + 8.0)
+    |                                               ------^^^---
+    |                                               |        |
+    |                                               |        has type `float`
+    |                                               has type `list[Unknown]`
+  No matching overload found for function `list.__add__` called with arguments: (float)
+  Possible overloads:
+    (value: list[Unknown], /) -> list[Unknown] [closest match]
+    (value: list[_S], /) -> list[_S | Unknown]
+  Argument `float` is not assignable to parameter `value` with type `list[Unknown]` in function `list.__add__`
+ERROR `+` is not supported between `str` and `float` [unsupported-operation]
+   --> backend\pdf_parser.py:373:47
+    |
+373 |             target_y1 = max(target_y0 + 55.0, max_y1 + 8.0)
+    |                                               ------^^^---
+    |                                               |        |
+    |                                               |        has type `float`
+    |                                               has type `str`
+  No matching overload found for function `str.__add__` called with arguments: (float)
+  Possible overloads:
+    (value: LiteralString, /) -> LiteralString
+    (value: str, /) -> str [closest match]
+  Argument `float` is not assignable to parameter `value` with type `str` in function `str.__add__`
+ERROR No matching overload found for function `round` called with arguments: (str | Unknown, Literal[2]) [no-matching-overload]
+   --> backend\pdf_parser.py:386:36
+    |
+386 |                 "labelBbox": [round(c, 2) for c in current_line["bbox"]],
+    |                                    ^^^^^^
+  Possible overloads:
+    (number: _SupportsRound1[_T], ndigits: None = None) -> _T
+    (number: _SupportsRound2[_T], ndigits: SupportsIndex) -> _T [closest match]
+  Argument `str | Unknown` is not assignable to parameter `number` with type `_SupportsRound2[@_]` in function `round`
+ERROR `-` is not supported between `list[Unknown]` and `list[Unknown]` [unsupported-operation]
+   --> backend\pdf_parser.py:388:52
+    |
+388 | ...   "labelDimensions": {"width": round(current_line["x1"] - current_line["x0"], 2), "height": round(current_line["y1"] - current_...
+    |                                          ------------------^^^------------------
+    |                                          |                    |
+    |                                          |                    has type `list[Unknown]`
+    |                                          has type `list[Unknown]`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `-` is not supported between `list[Unknown]` and `str` [unsupported-operation]
+   --> backend\pdf_parser.py:388:52
+    |
+388 | ...   "labelDimensions": {"width": round(current_line["x1"] - current_line["x0"], 2), "height": round(current_line["y1"] - current_...
+    |                                          ------------------^^^------------------
+    |                                          |                    |
+    |                                          |                    has type `str`
+    |                                          has type `list[Unknown]`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `-` is not supported between `str` and `list[Unknown]` [unsupported-operation]
+   --> backend\pdf_parser.py:388:52
+    |
+388 | ...   "labelDimensions": {"width": round(current_line["x1"] - current_line["x0"], 2), "height": round(current_line["y1"] - current_...
+    |                                          ------------------^^^------------------
+    |                                          |                    |
+    |                                          |                    has type `list[Unknown]`
+    |                                          has type `str`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `-` is not supported between `str` and `str` [unsupported-operation]
+   --> backend\pdf_parser.py:388:52
+    |
+388 | ...   "labelDimensions": {"width": round(current_line["x1"] - current_line["x0"], 2), "height": round(current_line["y1"] - current_...
+    |                                          ------------------^^^------------------
+    |                                          |                    |
+    |                                          |                    has type `str`
+    |                                          has type `str`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `-` is not supported between `list[Unknown]` and `list[Unknown]` [unsupported-operation]
+   --> backend\pdf_parser.py:388:113
+    |
+388 | ...line["x0"], 2), "height": round(current_line["y1"] - current_line["y0"], 2)},
+    |                                    ------------------^^^------------------
+    |                                    |                    |
+    |                                    |                    has type `list[Unknown]`
+    |                                    has type `list[Unknown]`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `-` is not supported between `list[Unknown]` and `str` [unsupported-operation]
+   --> backend\pdf_parser.py:388:113
+    |
+388 | ...rent_line["x0"], 2), "height": round(current_line["y1"] - current_line["y0"], 2)},
+    |                                         ------------------^^^------------------
+    |                                         |                    |
+    |                                         |                    has type `str`
+    |                                         has type `list[Unknown]`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `-` is not supported between `str` and `list[Unknown]` [unsupported-operation]
+   --> backend\pdf_parser.py:388:113
+    |
+388 | ...line["x0"], 2), "height": round(current_line["y1"] - current_line["y0"], 2)},
+    |                                    ------------------^^^------------------
+    |                                    |                    |
+    |                                    |                    has type `list[Unknown]`
+    |                                    has type `str`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `-` is not supported between `str` and `str` [unsupported-operation]
+   --> backend\pdf_parser.py:388:113
+    |
+388 | ...rent_line["x0"], 2), "height": round(current_line["y1"] - current_line["y0"], 2)},
+    |                                         ------------------^^^------------------
+    |                                         |                    |
+    |                                         |                    has type `str`
+    |                                         has type `str`
+  Cannot find `__sub__` or `__rsub__`
+ERROR Object of class `list` has no attribute `lower` [missing-attribute]
+   --> backend\pdf_parser.py:411:36
+    |
+411 |         if "assignment release" in txt.lower():
+    |                                    ^^^^^^^^^
+ERROR Object of class `list` has no attribute `lower` [missing-attribute]
+   --> backend\pdf_parser.py:414:20
+    |
+414 |                 if lines_list[look_idx]["text"].lower().startswith("date") and lines_list[look_idx]["x0"] <= 120:
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ERROR `<=` is not supported between `list[Unknown]` and `Literal[120]` [unsupported-operation]
+   --> backend\pdf_parser.py:414:80
+    |
+414 |                 if lines_list[look_idx]["text"].lower().startswith("date") and lines_list[look_idx]["x0"] <= 120:
+    |                                                                                --------------------------^^^^---
+    |                                                                                |                             |
+    |                                                                                |                             has type `Literal[120]`
+    |                                                                                has type `list[Unknown]`
+  Argument `Literal[120]` is not assignable to parameter `value` with type `list[Unknown]` in function `list.__le__`
+ERROR `<=` is not supported between `str` and `Literal[120]` [unsupported-operation]
+   --> backend\pdf_parser.py:414:80
+    |
+414 |                 if lines_list[look_idx]["text"].lower().startswith("date") and lines_list[look_idx]["x0"] <= 120:
+    |                                                                                --------------------------^^^^---
+    |                                                                                |                             |
+    |                                                                                |                             has type `Literal[120]`
+    |                                                                                has type `str`
+  Argument `Literal[120]` is not assignable to parameter `value` with type `str` in function `str.__le__`
+ERROR Object of class `list` has no attribute `lower` [missing-attribute]
+   --> backend\pdf_parser.py:423:25
+    |
+423 |             lower_txt = txt.lower()
+    |                         ^^^^^^^^^
+ERROR Argument `list[Unknown] | str | Unknown` is not assignable to parameter `text` with type `str` in function `is_time_or_numeric_string` [bad-argument-type]
+   --> backend\pdf_parser.py:428:69
+    |
+428 |                     if ":" in txt and not is_time_or_numeric_string(txt):
+    |                                                                     ^^^
+ERROR Object of class `list` has no attribute `split` [missing-attribute]
+   --> backend\pdf_parser.py:429:41
+    |
+429 |                         matched_label = txt.split(":", 1)[0].strip()
+    |                                         ^^^^^^^^^
+ERROR Object of class `list` has no attribute `strip` [missing-attribute]
+   --> backend\pdf_parser.py:431:41
+    |
+431 |                         matched_label = txt.strip()
+    |                                         ^^^^^^^^^
+ERROR Argument `list[Unknown] | str | Unknown` is not assignable to parameter `text` with type `str` in function `is_time_or_numeric_string` [bad-argument-type]
+   --> backend\pdf_parser.py:435:73
+    |
+435 |         if not matched and ":" in txt and not is_time_or_numeric_string(txt):
+    |                                                                         ^^^
+ERROR Object of class `list` has no attribute `split` [missing-attribute]
+   --> backend\pdf_parser.py:436:21
+    |
+436 |             parts = txt.split(":", 1)
+    |                     ^^^^^^^^^
+ERROR `+` is not supported between `list[Unknown]` and `Literal[30]` [unsupported-operation]
+   --> backend\pdf_parser.py:455:40
+    |
+455 |                     if other_l["x0"] > current_line["x0"] + 30 and abs(other_l["center_y"] - current_line["center_y"]) < 16:
+    |                                        ------------------^^^--
+    |                                        |                    |
+    |                                        |                    has type `Literal[30]`
+    |                                        has type `list[Unknown]`
+  No matching overload found for function `list.__add__` called with arguments: (Literal[30])
+  Possible overloads:
+    (value: list[Unknown], /) -> list[Unknown] [closest match]
+    (value: list[_S], /) -> list[_S | Unknown]
+  Argument `Literal[30]` is not assignable to parameter `value` with type `list[Unknown]` in function `list.__add__`
+ERROR `+` is not supported between `str` and `Literal[30]` [unsupported-operation]
+   --> backend\pdf_parser.py:455:40
+    |
+455 |                     if other_l["x0"] > current_line["x0"] + 30 and abs(other_l["center_y"] - current_line["center_y"]) < 16:
+    |                                        ------------------^^^--
+    |                                        |                    |
+    |                                        |                    has type `Literal[30]`
+    |                                        has type `str`
+  No matching overload found for function `str.__add__` called with arguments: (Literal[30])
+  Possible overloads:
+    (value: LiteralString, /) -> LiteralString
+    (value: str, /) -> str [closest match]
+  Argument `Literal[30]` is not assignable to parameter `value` with type `str` in function `str.__add__`
+ERROR `-` is not supported between `list[Unknown]` and `list[Unknown]` [unsupported-operation]
+   --> backend\pdf_parser.py:455:72
+    |
+455 |                     if other_l["x0"] > current_line["x0"] + 30 and abs(other_l["center_y"] - current_line["center_y"]) < 16:
+    |                                                                        -------------------^^^------------------------
+    |                                                                        |                     |
+    |                                                                        |                     has type `list[Unknown]`
+    |                                                                        has type `list[Unknown]`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `-` is not supported between `list[Unknown]` and `str` [unsupported-operation]
+   --> backend\pdf_parser.py:455:72
+    |
+455 |                     if other_l["x0"] > current_line["x0"] + 30 and abs(other_l["center_y"] - current_line["center_y"]) < 16:
+    |                                                                        -------------------^^^------------------------
+    |                                                                        |                     |
+    |                                                                        |                     has type `str`
+    |                                                                        has type `list[Unknown]`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `-` is not supported between `str` and `list[Unknown]` [unsupported-operation]
+   --> backend\pdf_parser.py:455:72
+    |
+455 |                     if other_l["x0"] > current_line["x0"] + 30 and abs(other_l["center_y"] - current_line["center_y"]) < 16:
+    |                                                                        -------------------^^^------------------------
+    |                                                                        |                     |
+    |                                                                        |                     has type `list[Unknown]`
+    |                                                                        has type `str`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `-` is not supported between `str` and `str` [unsupported-operation]
+   --> backend\pdf_parser.py:455:72
+    |
+455 |                     if other_l["x0"] > current_line["x0"] + 30 and abs(other_l["center_y"] - current_line["center_y"]) < 16:
+    |                                                                        -------------------^^^------------------------
+    |                                                                        |                     |
+    |                                                                        |                     has type `str`
+    |                                                                        has type `str`
+  Cannot find `__sub__` or `__rsub__`
+ERROR Object of class `list` has no attribute `lower` [missing-attribute]
+   --> backend\pdf_parser.py:463:34
+    |
+463 |                     lower_next = candidate_next["text"].lower()
+    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ERROR Object of class `list` has no attribute `endswith` [missing-attribute]
+   --> backend\pdf_parser.py:464:87
+    |
+464 |                     is_next_label = any(kw in lower_next for kw in LABEL_KEYWORDS) or candidate_next["text"].endswith(":")
+    |                                                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ERROR `-` is not supported between `list[Unknown]` and `list[Unknown]` [unsupported-operation]
+   --> backend\pdf_parser.py:467:30
+    |
+467 |                         and (candidate_next["y0"] - current_line["y1"]) < 18
+    |                              --------------------^^^------------------
+    |                              |                      |
+    |                              |                      has type `list[Unknown]`
+    |                              has type `list[Unknown]`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `-` is not supported between `list[Unknown]` and `str` [unsupported-operation]
+   --> backend\pdf_parser.py:467:30
+    |
+467 |                         and (candidate_next["y0"] - current_line["y1"]) < 18
+    |                              --------------------^^^------------------
+    |                              |                      |
+    |                              |                      has type `str`
+    |                              has type `list[Unknown]`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `-` is not supported between `str` and `list[Unknown]` [unsupported-operation]
+   --> backend\pdf_parser.py:467:30
+    |
+467 |                         and (candidate_next["y0"] - current_line["y1"]) < 18
+    |                              --------------------^^^------------------
+    |                              |                      |
+    |                              |                      has type `list[Unknown]`
+    |                              has type `str`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `-` is not supported between `str` and `str` [unsupported-operation]
+   --> backend\pdf_parser.py:467:30
+    |
+467 |                         and (candidate_next["y0"] - current_line["y1"]) < 18
+    |                              --------------------^^^------------------
+    |                              |                      |
+    |                              |                      has type `str`
+    |                              has type `str`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `>=` is not supported between `list[Unknown]` and `str` [unsupported-operation]
+   --> backend\pdf_parser.py:469:29
+    |
+469 |                         and candidate_next["x0"] >= current_line["x0"]
+    |                             --------------------^^^^------------------
+    |                             |                       |
+    |                             |                       has type `str`
+    |                             has type `list[Unknown]`
+  Argument `str` is not assignable to parameter `value` with type `list[Unknown]` in function `list.__ge__`
+ERROR `>=` is not supported between `str` and `list[Unknown]` [unsupported-operation]
+   --> backend\pdf_parser.py:469:29
+    |
+469 |                         and candidate_next["x0"] >= current_line["x0"]
+    |                             --------------------^^^^------------------
+    |                             |                       |
+    |                             |                       has type `list[Unknown]`
+    |                             has type `str`
+  Argument `list[Unknown]` is not assignable to parameter `value` with type `str` in function `str.__ge__`
+ERROR `-` is not supported between `str` and `str` [unsupported-operation]
+   --> backend\pdf_parser.py:477:28
+    |
+477 |                 lw = round(lx1 - lx0, 2)
+    |                            ---^^^---
+    |                            |     |
+    |                            |     has type `str`
+    |                            has type `str`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `-` is not supported between `str` and `str` [unsupported-operation]
+   --> backend\pdf_parser.py:478:28
+    |
+478 |                 lh = round(ly1 - ly0, 2)
+    |                            ---^^^---
+    |                            |     |
+    |                            |     has type `str`
+    |                            has type `str`
+  Cannot find `__sub__` or `__rsub__`
+ERROR `+` is not supported between `str` and `Literal[8]` [unsupported-operation]
+   --> backend\pdf_parser.py:482:34
+    |
+482 |                     inp_x0 = max(lx1 + 8, vx0 - 4)
+    |                                  ---^^^-
+    |                                  |     |
+    |                                  |     has type `Literal[8]`
+    |                                  has type `str`
+  No matching overload found for function `str.__add__` called with arguments: (Literal[8])
+  Possible overloads:
+    (value: LiteralString, /) -> LiteralString
+    (value: str, /) -> str [closest match]
+  Argument `Literal[8]` is not assignable to parameter `value` with type `str` in function `str.__add__`
+ERROR `-` is not supported between `str` and `Literal[4]` [unsupported-operation]
+   --> backend\pdf_parser.py:482:43
+    |
+482 |                     inp_x0 = max(lx1 + 8, vx0 - 4)
+    |                                           ---^^^-
+    |                                           |     |
+    |                                           |     has type `Literal[4]`
+    |                                           has type `str`
+  Argument `str` is not assignable to parameter `value` with type `int` in function `int.__rsub__`
+ERROR `+` is not supported between `str` and `Literal[8]` [unsupported-operation]
+   --> backend\pdf_parser.py:483:34
+    |
+483 |                     inp_x1 = max(vx1 + 8, inp_x0 + 120)
+    |                                  ---^^^-
+    |                                  |     |
+    |                                  |     has type `Literal[8]`
+    |                                  has type `str`
+  No matching overload found for function `str.__add__` called with arguments: (Literal[8])
+  Possible overloads:
+    (value: LiteralString, /) -> LiteralString
+    (value: str, /) -> str [closest match]
+  Argument `Literal[8]` is not assignable to parameter `value` with type `str` in function `str.__add__`
+ERROR `-` is not supported between `str` and `Literal[2]` [unsupported-operation]
+   --> backend\pdf_parser.py:484:30
+    |
+484 |                     inp_y0 = vy0 - 2
+    |                              ---^^^-
+    |                              |     |
+    |                              |     has type `Literal[2]`
+    |                              has type `str`
+  Argument `str` is not assignable to parameter `value` with type `int` in function `int.__rsub__`
+ERROR `+` is not supported between `str` and `Literal[2]` [unsupported-operation]
+   --> backend\pdf_parser.py:485:30
+    |
+485 |                     inp_y1 = vy1 + 2
+    |                              ---^^^-
+    |                              |     |
+    |                              |     has type `Literal[2]`
+    |                              has type `str`
+  No matching overload found for function `str.__add__` called with arguments: (Literal[2])
+  Possible overloads:
+    (value: LiteralString, /) -> LiteralString
+    (value: str, /) -> str [closest match]
+  Argument `Literal[2]` is not assignable to parameter `value` with type `str` in function `str.__add__`
+ERROR `+` is not supported between `str` and `Literal[8]` [unsupported-operation]
+   --> backend\pdf_parser.py:487:34
+    |
+487 |                     inp_x0 = min(lx1 + 8, page_width - 120)
+    |                                  ---^^^-
+    |                                  |     |
+    |                                  |     has type `Literal[8]`
+    |                                  has type `str`
+  No matching overload found for function `str.__add__` called with arguments: (Literal[8])
+  Possible overloads:
+    (value: LiteralString, /) -> LiteralString
+    (value: str, /) -> str [closest match]
+  Argument `Literal[8]` is not assignable to parameter `value` with type `str` in function `str.__add__`
+ERROR `-` is not supported between `str` and `Literal[2]` [unsupported-operation]
+   --> backend\pdf_parser.py:489:30
+    |
+489 |                     inp_y0 = ly0 - 2
+    |                              ---^^^-
+    |                              |     |
+    |                              |     has type `Literal[2]`
+    |                              has type `str`
+  Argument `str` is not assignable to parameter `value` with type `int` in function `int.__rsub__`
+ERROR `+` is not supported between `str` and `Literal[3]` [unsupported-operation]
+   --> backend\pdf_parser.py:490:30
+    |
+490 |                     inp_y1 = ly1 + 3
+    |                              ---^^^-
+    |                              |     |
+    |                              |     has type `Literal[3]`
+    |                              has type `str`
+  No matching overload found for function `str.__add__` called with arguments: (Literal[3])
+  Possible overloads:
+    (value: LiteralString, /) -> LiteralString
+    (value: str, /) -> str [closest match]
+  Argument `Literal[3]` is not assignable to parameter `value` with type `str` in function `str.__add__`
+ERROR No matching overload found for function `round` called with arguments: (str | Unknown, Literal[2]) [no-matching-overload]
+   --> backend\pdf_parser.py:505:40
+    |
+505 |                     "labelBbox": [round(lx0, 2), round(ly0, 2), round(lx1, 2), round(ly1, 2)],
+    |                                        ^^^^^^^^
+  Possible overloads:
+    (number: _SupportsRound1[_T], ndigits: None = None) -> _T
+    (number: _SupportsRound2[_T], ndigits: SupportsIndex) -> _T [closest match]
+  Argument `str | Unknown` is not assignable to parameter `number` with type `_SupportsRound2[@_]` in function `round`
+ERROR No matching overload found for function `round` called with arguments: (str | Unknown, Literal[2]) [no-matching-overload]
+   --> backend\pdf_parser.py:505:55
+    |
+505 |                     "labelBbox": [round(lx0, 2), round(ly0, 2), round(lx1, 2), round(ly1, 2)],
+    |                                                       ^^^^^^^^
+  Possible overloads:
+    (number: _SupportsRound1[_T], ndigits: None = None) -> _T
+    (number: _SupportsRound2[_T], ndigits: SupportsIndex) -> _T [closest match]
+  Argument `str | Unknown` is not assignable to parameter `number` with type `_SupportsRound2[@_]` in function `round`
+ERROR No matching overload found for function `round` called with arguments: (str | Unknown, Literal[2]) [no-matching-overload]
+   --> backend\pdf_parser.py:505:70
+    |
+505 |                     "labelBbox": [round(lx0, 2), round(ly0, 2), round(lx1, 2), round(ly1, 2)],
+    |                                                                      ^^^^^^^^
+  Possible overloads:
+    (number: _SupportsRound1[_T], ndigits: None = None) -> _T
+    (number: _SupportsRound2[_T], ndigits: SupportsIndex) -> _T [closest match]
+  Argument `str | Unknown` is not assignable to parameter `number` with type `_SupportsRound2[@_]` in function `round`
+ERROR No matching overload found for function `round` called with arguments: (str | Unknown, Literal[2]) [no-matching-overload]
+   --> backend\pdf_parser.py:505:85
+    |
+505 |                     "labelBbox": [round(lx0, 2), round(ly0, 2), round(lx1, 2), round(ly1, 2)],
+    |                                                                                     ^^^^^^^^
+  Possible overloads:
+    (number: _SupportsRound1[_T], ndigits: None = None) -> _T
+    (number: _SupportsRound2[_T], ndigits: SupportsIndex) -> _T [closest match]
+  Argument `str | Unknown` is not assignable to parameter `number` with type `_SupportsRound2[@_]` in function `round`
+ERROR Cannot index into `int` [bad-index]
+   --> backend\pdf_parser.py:533:21
+    |
+533 |                 abs(f_box[1] - e_box[1]) < 8.0
+    |                     ^^^^^^^^
+  Object of class `int` has no attribute `__getitem__`
+ERROR Cannot index into `dict[str, str]` [bad-index]
+   --> backend\pdf_parser.py:533:27
+    |
+533 |                 abs(f_box[1] - e_box[1]) < 8.0
+    |                           ^
+  Argument `Literal[1]` is not assignable to parameter `key` with type `str` in function `dict.__getitem__`
+ERROR Cannot index into `dict[str, Unknown]` [bad-index]
+   --> backend\pdf_parser.py:533:27
+    |
+533 |                 abs(f_box[1] - e_box[1]) < 8.0
+    |                           ^
+  Argument `Literal[1]` is not assignable to parameter `key` with type `str` in function `dict.__getitem__`
+ERROR Cannot index into `int` [bad-index]
+   --> backend\pdf_parser.py:534:25
+    |
+534 |                 and abs(f_box[0] - e_box[0]) < 15.0
+    |                         ^^^^^^^^
+  Object of class `int` has no attribute `__getitem__`
+ERROR Cannot index into `dict[str, str]` [bad-index]
+   --> backend\pdf_parser.py:534:31
+    |
+534 |                 and abs(f_box[0] - e_box[0]) < 15.0
+    |                               ^
+  Argument `Literal[0]` is not assignable to parameter `key` with type `str` in function `dict.__getitem__`
+ERROR Cannot index into `dict[str, Unknown]` [bad-index]
+   --> backend\pdf_parser.py:534:31
+    |
+534 |                 and abs(f_box[0] - e_box[0]) < 15.0
+    |                               ^
+  Argument `Literal[0]` is not assignable to parameter `key` with type `str` in function `dict.__getitem__`
