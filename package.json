@@ -4,7 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/dev.js",
+    "dev:frontend": "vite",
+    "dev:backend": "python backend/main.py",
+    "start": "node scripts/dev.js",
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview"
