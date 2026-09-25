@@ -811,23 +811,23 @@ export default function PreviewMode({
             <ChevronUp className="w-4 h-4" />
           </button>
 
-          {/* PlatoForms Brand Badge */}
+          {/* FormFlow Brand Badge */}
           <div
-            title="PlatoForms Local Engine"
-            className="w-7 h-7 rounded-md bg-[#191a1e] flex items-center justify-center ml-1 shadow-xs cursor-pointer"
+            title="FormFlow Engine"
+            className="w-7 h-7 rounded-md bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center ml-1 shadow-xs cursor-pointer text-white"
           >
             <svg
-              className="w-4 h-4 text-yellow-400"
+              className="w-4 h-4 text-white"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2.8"
+              strokeWidth="2.5"
               strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              <line x1="12" y1="2" x2="12" y2="22" />
-              <line x1="2" y1="12" x2="22" y2="12" />
-              <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-              <line x1="4.93" y1="19.07" x2="19.07" y2="4.93" />
+              <path d="M4 4h16v4H4z" />
+              <path d="M4 10h12v4H4z" />
+              <path d="M4 16h8v4H4z" />
             </svg>
           </div>
         </div>
@@ -987,7 +987,7 @@ export default function PreviewMode({
 
             {/* Footer Branding */}
             <footer className="text-center text-[11px] text-slate-400 py-3">
-              PlatoForms - Turn your PDF into a responsive web form
+              FormFlow AI • Turn any PDF into a responsive web form
             </footer>
           </div>
         ) : (

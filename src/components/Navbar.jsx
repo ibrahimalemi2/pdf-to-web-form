@@ -1,6 +1,5 @@
 import React from 'react';
 import { 
-  ArrowLeft, 
   Send, 
   GitBranch, 
   Settings2, 
@@ -52,11 +51,17 @@ export default function Navbar({
         <button 
           type="button"
           onClick={onBack}
-          title="Back to Upload Screen" 
-          className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 px-2.5 py-1.5 rounded-md transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer"
+          title="Back to FormFlow Home" 
+          className="flex items-center gap-2 text-slate-700 hover:text-blue-600 hover:bg-slate-100 px-2 py-1.5 rounded-lg transition-colors text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4" />
-          <span className="hidden sm:inline">Forms</span>
+          <div className="w-6 h-6 rounded-md bg-gradient-to-tr from-blue-600 via-indigo-600 to-indigo-700 flex items-center justify-center text-white shadow-2xs">
+            <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 5h16" />
+              <path d="M4 12h11" />
+              <path d="M4 19h7" />
+            </svg>
+          </div>
+          <span className="font-bold tracking-tight">Form<span className="text-blue-600">Flow</span></span>
         </button>
 
         <div className="h-4 w-px bg-slate-200" />

@@ -994,7 +994,7 @@ export default function PdfViewer({
               <button
                 type="button"
                 onClick={handleAlignLeft}
-                title="Align to Left Margin (PlatoForms style)"
+                title="Align to Left Margin"
                 className="p-1 rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer"
               >
                 <AlignLeftMarginIcon className="w-4 h-4" />
@@ -1002,7 +1002,7 @@ export default function PdfViewer({
               <button
                 type="button"
                 onClick={handleAlignRight}
-                title="Align to Right Margin (PlatoForms style)"
+                title="Align to Right Margin"
                 className="p-1 rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer"
               >
                 <AlignRightMarginIcon className="w-4 h-4" />
@@ -1010,7 +1010,7 @@ export default function PdfViewer({
               <button
                 type="button"
                 onClick={handleFitWidth}
-                title="Fit to Column Width / Stretch (PlatoForms style)"
+                title="Fit to Column Width / Stretch"
                 className="p-1 rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer"
               >
                 <FitWidthIcon className="w-4 h-4" />
