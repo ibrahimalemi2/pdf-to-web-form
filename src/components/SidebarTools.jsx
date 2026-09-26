@@ -7,7 +7,6 @@ import {
   Upload,
   Image as ImageIcon,
   Type,
-  Columns,
   SeparatorHorizontal,
   MoreHorizontal
 } from 'lucide-react';
@@ -54,12 +53,6 @@ const TOOLS = [
     label: 'Text / Heading',
     type: 'Header',
     icon: Type
-  },
-  {
-    id: 'columns',
-    label: 'Two Columns',
-    type: 'Short Text',
-    icon: Columns
   },
   {
     id: 'separator',

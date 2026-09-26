@@ -51,6 +51,43 @@ export default function PreviewMode({
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
+  // Group fields into sequential steps divided by 'Section' or 'Divider' fields
+  const steps = React.useMemo(() => {
+    const rawList = [];
+    let currentFields = [];
+    let currentTitle = formTitle || 'Part 1: General Details';
+
+    fields.forEach((f) => {
+      if (f.type === 'Section' || f.type === 'Divider') {
+        if (currentFields.length > 0 || rawList.length === 0) {
+          rawList.push({
+            title: currentTitle,
+            label: currentTitle,
+            fields: currentFields,
+            divider: f
+          });
+          currentFields = [];
+        }
+        currentTitle = f.label || `Part ${rawList.length + 1}`;
+      } else {
+        currentFields.push(f);
+      }
+    });
+
+    rawList.push({
+      title: currentTitle,
+      label: currentTitle,
+      fields: currentFields,
+      divider: null
+    });
+
+    const cleaned = rawList.filter((s, idx) => s.fields.length > 0 || idx === 0);
+    return cleaned.length > 0 ? cleaned : [{ title: formTitle, label: formTitle, fields: [], divider: null }];
+  }, [fields, formTitle]);
+
+  const [currentStep, setCurrentStep] = useState(0);
+  const safeStep = Math.min(currentStep, Math.max(0, steps.length - 1));
+
   // Conversational step state
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
@@ -196,27 +233,66 @@ export default function PreviewMode({
     showToast('✨ Populated all active form fields with sample data!');
   };
 
-  // Handle form submission with required validation
-  const handleSubmit = (e) => {
+  // Handle advancing to the next step with current step validation
+  const handleNextStep = (e) => {
     if (e) e.preventDefault();
-    const newErrors = {};
+    const currentFields = steps[safeStep]?.fields || [];
+    const stepErrors = {};
 
-    fields.forEach(f => {
-      if (f.type === 'Header' || f.type === 'Section') return;
+    currentFields.forEach(f => {
+      if (f.hidden || f.type === 'Header' || f.type === 'Section' || f.type === 'Divider') return;
       if (f.required) {
         const val = formData[f.id];
         if (f.type === 'Checkbox') {
           if (!val || (Array.isArray(val) && val.length === 0)) {
-            newErrors[f.id] = `${f.label} is required`;
+            stepErrors[f.id] = `${f.label} is required`;
           }
         } else if (!val || !val.toString().trim()) {
-          newErrors[f.id] = `${f.label} is required`;
+          stepErrors[f.id] = `${f.label} is required`;
         }
       }
     });
 
+    if (Object.keys(stepErrors).length > 0) {
+      setErrors(prev => ({ ...prev, ...stepErrors }));
+      showToast('⚠️ Please fill in all required fields on this step before continuing');
+      return;
+    }
+
+    setErrors({});
+    setCurrentStep(prev => Math.min(steps.length - 1, prev + 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Handle form submission with required validation across all steps
+  const handleSubmit = (e) => {
+    if (e) e.preventDefault();
+    const newErrors = {};
+    let firstErrorStep = -1;
+
+    steps.forEach((stepItem, stepIdx) => {
+      stepItem.fields.forEach(f => {
+        if (f.hidden || f.type === 'Header' || f.type === 'Section' || f.type === 'Divider') return;
+        if (f.required) {
+          const val = formData[f.id];
+          if (f.type === 'Checkbox') {
+            if (!val || (Array.isArray(val) && val.length === 0)) {
+              newErrors[f.id] = `${f.label} is required`;
+              if (firstErrorStep === -1) firstErrorStep = stepIdx;
+            }
+          } else if (!val || !val.toString().trim()) {
+            newErrors[f.id] = `${f.label} is required`;
+            if (firstErrorStep === -1) firstErrorStep = stepIdx;
+          }
+        }
+      });
+    });
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      if (firstErrorStep !== -1 && firstErrorStep !== safeStep) {
+        setCurrentStep(firstErrorStep);
+      }
       showToast('⚠️ Please fill in all required fields marked with *');
       return;
     }
@@ -249,12 +325,13 @@ export default function PreviewMode({
   const handleReset = () => {
     setIsSubmitted(false);
     setErrors({});
+    setCurrentStep(0);
     setCurrentStepIndex(0);
   };
 
-  // Filter interactive fields for Conversational mode
+  // Filter interactive fields for Conversational mode (excluding headers and dividers)
   const interactiveFields = fields.filter(
-    f => f.type !== 'Header' && f.type !== 'Section' && !f.hidden
+    f => f.type !== 'Header' && f.type !== 'Section' && f.type !== 'Divider' && !f.hidden
   );
 
   const currentConversationalField = interactiveFields[currentStepIndex] || interactiveFields[0];
@@ -663,7 +740,7 @@ export default function PreviewMode({
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden bg-[#f4f5f7] antialiased font-sans select-none">
+    <div className="h-screen w-full flex flex-col overflow-hidden bg-[#f4f5f7] antialiased font-sans select-none">
       {/* ============================================================ */}
       {/* TOP HEADER BAR (Exact Match to Design Requirements)         */}
       {/* ============================================================ */}
@@ -850,14 +927,83 @@ export default function PreviewMode({
                 </h1>
 
                 {/* Form Subtitle / Description */}
-                <p className="text-xs sm:text-sm text-slate-500 leading-relaxed mb-8">
+                <p className="text-xs sm:text-sm text-slate-500 leading-relaxed mb-6">
                   {cleanDescription}
                 </p>
 
-                {/* Dynamic Form Inputs Grid matching PlatoForms */}
+                {/* Multi-step progress indicator when divider lines are present */}
+                {steps.length > 1 && (
+                  <div className="mb-8 pb-5 border-b border-slate-100">
+                    <div className="flex items-center justify-between mb-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">
+                          Step {safeStep + 1} of {steps.length}
+                        </span>
+                        <span className="text-sm font-bold text-slate-800">
+                          {steps[safeStep]?.label || `Step ${safeStep + 1}`}
+                        </span>
+                      </div>
+                      <span className="text-xs text-slate-400 font-medium">
+                        {Math.round(((safeStep + 1) / steps.length) * 100)}% Completed
+                      </span>
+                    </div>
+
+                    {/* Step progress track */}
+                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden flex gap-1 p-0.5 mb-3.5">
+                      {steps.map((_, idx) => (
+                        <div
+                          key={idx}
+                          className={`flex-1 h-full rounded-full transition-all duration-300 ${
+                            idx < safeStep
+                              ? 'bg-emerald-500'
+                              : idx === safeStep
+                              ? 'bg-blue-600'
+                              : 'bg-slate-200'
+                          }`}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Step Navigation Pills */}
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                      {steps.map((s, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            if (idx <= safeStep) {
+                              setCurrentStep(idx);
+                            }
+                          }}
+                          disabled={idx > safeStep}
+                          className={`text-xs px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 ${
+                            idx === safeStep
+                              ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                              : idx < safeStep
+                              ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer font-medium'
+                              : 'bg-transparent text-slate-300 cursor-not-allowed'
+                          }`}
+                        >
+                          {idx < safeStep ? (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          ) : (
+                            <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                              idx === safeStep ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
+                            }`}>
+                              {idx + 1}
+                            </span>
+                          )}
+                          <span className="truncate max-w-[140px]">{s.label || `Step ${idx + 1}`}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Dynamic Form Inputs Grid for Current Step */}
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
-                    {fields.map((field) => {
+                    {steps[safeStep]?.fields.map((field) => {
                       if (field.hidden) return null;
 
                       if (field.type === 'Header') {
@@ -870,16 +1016,8 @@ export default function PreviewMode({
                         );
                       }
 
-                      if (field.type === 'Section') {
-                        return (
-                          <div key={field.id} className="sm:col-span-2 flex items-center gap-3 py-2">
-                            <div className="h-px bg-slate-200 flex-1" />
-                            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                              {field.label}
-                            </span>
-                            <div className="h-px bg-slate-200 flex-1" />
-                          </div>
-                        );
+                      if (field.type === 'Section' || field.type === 'Divider') {
+                        return null;
                       }
 
                       const cleanLbl = getCleanLabel(field.label);
@@ -919,15 +1057,42 @@ export default function PreviewMode({
                     })}
                   </div>
 
-                  {/* Centered Submit Button */}
-                  <div className="pt-6 flex justify-center">
-                    <button
-                      type="submit"
-                      className="inline-flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium text-xs sm:text-sm px-8 py-2.5 rounded-xl shadow-md shadow-blue-500/20 transition cursor-pointer active:scale-95"
-                    >
-                      <span>Submit</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
+                  {/* Action buttons (Back / Next / Submit Application) */}
+                  <div className="pt-8 border-t border-slate-100 flex items-center justify-between gap-4">
+                    {safeStep > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCurrentStep(prev => Math.max(0, prev - 1));
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="inline-flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-semibold text-xs sm:text-sm px-6 py-2.5 rounded-xl shadow-xs transition cursor-pointer active:scale-95"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        <span>Back</span>
+                      </button>
+                    ) : (
+                      <div />
+                    )}
+
+                    {safeStep < steps.length - 1 ? (
+                      <button
+                        type="button"
+                        onClick={handleNextStep}
+                        className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:from-blue-800 active:to-indigo-800 text-white font-semibold text-xs sm:text-sm px-8 py-2.5 rounded-xl shadow-md shadow-blue-500/25 transition cursor-pointer active:scale-95 ml-auto"
+                      >
+                        <span>Next</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:from-blue-800 active:to-indigo-800 text-white font-semibold text-xs sm:text-sm px-8 py-2.5 rounded-xl shadow-md shadow-blue-500/25 transition cursor-pointer active:scale-95 ml-auto"
+                      >
+                        <span>Submit Application</span>
+                        <CheckCircle2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </form>
               </div>

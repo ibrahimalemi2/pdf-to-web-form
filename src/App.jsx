@@ -369,9 +369,10 @@ export default function App() {
     showToast(`✨ Auto-detected ${list.length} fields linked via SVG lines.`);
   };
 
-  // Add field handler (from sidebar)
-  const handleAddField = (toolType) => {
+  // Add field handler (from sidebar or canvas)
+  const handleAddField = (toolType, insertAtIndex) => {
     const newId = `field_${Date.now()}`;
+    const isDivider = toolType === 'Section' || toolType === 'Divider';
     const defaultLabels = {
       'Short Text': 'Text Field',
       'Long Text': 'Paragraph Notes',
@@ -380,7 +381,8 @@ export default function App() {
       'Checkbox': 'Consent Agreement',
       'Signature': 'Authorized Signature',
       'File Upload': 'Document Attachment',
-      'Section': 'Form Section Header',
+      'Section': 'Page Break: Next Step',
+      'Divider': 'Page Break: Next Step',
       'Header': 'Section Title'
     };
 
@@ -389,7 +391,7 @@ export default function App() {
       id: newId,
       type: toolType,
       label: defaultLabels[toolType] || `${toolType} Field`,
-      placeholder: isDate ? 'YYYY - MM - DD' : (toolType === 'Header' || toolType === 'Section' ? `${toolType} Title` : `Enter ${toolType.toLowerCase()}...`),
+      placeholder: isDivider ? 'Next Step Title' : isDate ? 'YYYY - MM - DD' : (toolType === 'Header' ? 'Section Title' : `Enter ${toolType.toLowerCase()}...`),
       format: isDate ? 'YYYY-MM-DD' : '',
       datePlaceholderYear: 'YYYY',
       datePlaceholderMonth: 'MM',
@@ -399,7 +401,7 @@ export default function App() {
       dateRangeEnd: 'No limit',
       dateErrorMessage: '',
       align: 'left',
-      printInPdf: true,
+      printInPdf: !isDivider,
       pdfFont: 'Roboto',
       pdfFontSize: 10,
       pdfFontColor: '#000000',
@@ -409,12 +411,12 @@ export default function App() {
       pdfOverflowSmaller: true,
       pdfOverflowWrap: true,
       pdfTextSpacing: 'Natural',
-      helperText: `Configured ${toolType.toLowerCase()} input`,
+      helperText: isDivider ? 'Divider Line: in preview, user fills previous fields, then clicks Next' : `Configured ${toolType.toLowerCase()} input`,
       value: '',
       required: false,
       readOnly: false,
       hidden: false,
-      columnSpan: toolType === 'Long Text' || toolType === 'File Upload' || toolType === 'Section' || toolType === 'Header' ? 2 : 1,
+      columnSpan: toolType === 'Long Text' || toolType === 'File Upload' || isDivider || toolType === 'Header' ? 2 : 1,
       options: toolType === 'Dropdown' ? ['Option A', 'Option B', 'Option C'] : toolType === 'Checkbox' ? ['Single', 'Married'] : undefined,
       multipleChoices: false,
       choicesPerRow: 2,
@@ -431,10 +433,28 @@ export default function App() {
       }
     };
 
-    setFields(prev => [...prev, newField]);
+    setFields(prev => {
+      const next = [...prev];
+      if (typeof insertAtIndex === 'number' && insertAtIndex >= 0 && insertAtIndex <= next.length) {
+        next.splice(insertAtIndex, 0, newField);
+      } else if (selectedFieldId) {
+        const selIdx = next.findIndex(f => f.id === selectedFieldId);
+        if (selIdx >= 0) {
+          next.splice(selIdx + 1, 0, newField);
+        } else {
+          next.push(newField);
+        }
+      } else {
+        next.push(newField);
+      }
+      return next;
+    });
+
     setSelectedFieldId(newId);
-    setIsPropertyPanelOpen(true);
-    showToast(`Added new ${toolType} component`);
+    if (!isDivider) {
+      setIsPropertyPanelOpen(true);
+    }
+    showToast(isDivider ? `✨ Placed Divider Line! In Preview, it will require "Next" to continue.` : `Added new ${toolType} component`);
   };
 
   // Add field with coordinates drawn on the PDF canvas
@@ -599,7 +619,7 @@ export default function App() {
 
   // VIEW 3: Split-Screen Editor Workspace
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden bg-slate-100 antialiased font-sans text-slate-800">
+    <div className="h-screen w-full flex flex-col overflow-hidden bg-slate-100 antialiased font-sans text-slate-800">
       {/* Top Navigation Bar */}
       <Navbar
         documentName={documentName}
@@ -655,7 +675,7 @@ export default function App() {
             onAddField={handleAddField}
             onPopulateAiFields={handlePopulateAiFields}
             step={1}
-            totalSteps={2}
+            totalSteps={fields.filter(f => f.type === 'Section' || f.type === 'Divider').length + 1}
             formTitle={formMeta.title}
             formDescription={formMeta.description}
             onUpdateFormMeta={(meta) => setFormMeta(prev => ({ ...prev, ...meta }))}

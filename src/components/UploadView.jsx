@@ -71,7 +71,7 @@ export default function UploadView({
   };
 
   return (
-    <div className="min-h-screen w-screen bg-[#fcfdff] text-slate-800 flex flex-col justify-between select-none overflow-y-auto relative">
+    <div className="min-h-screen w-full bg-[#fcfdff] text-slate-800 flex flex-col justify-between relative">
       {/* Background Subtle Ambient Lighting & Grid */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[1000px] h-[450px] bg-gradient-to-b from-blue-100/60 via-indigo-50/40 to-transparent blur-3xl opacity-80" />

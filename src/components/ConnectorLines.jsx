@@ -18,7 +18,7 @@ export default function ConnectorLines({
     const list = [];
     if (selectedFieldId) {
       const field = fields.find((f) => f.id === selectedFieldId);
-      if (field) {
+      if (field && field.type !== 'Section' && field.type !== 'Divider') {
         list.push({
           id: selectedFieldId,
           isSelected: true,
@@ -29,7 +29,7 @@ export default function ConnectorLines({
     }
     if (hoveredFieldId && hoveredFieldId !== selectedFieldId) {
       const field = fields.find((f) => f.id === hoveredFieldId);
-      if (field) {
+      if (field && field.type !== 'Section' && field.type !== 'Divider') {
         list.push({
           id: hoveredFieldId,
           isSelected: false,

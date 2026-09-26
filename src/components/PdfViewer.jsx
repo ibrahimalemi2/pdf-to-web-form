@@ -98,8 +98,8 @@ function PdfPageCard({
     ? previewImageUrl
     : (documentId ? getPageImageUrl(documentId, pageNum) : null);
 
-  // Filter fields mapped to this specific page
-  const pageFields = fields.filter(f => (f.pdfMapping?.page || f.page || 1) === pageNum);
+  // Filter fields mapped to this specific page (excluding structural page dividers)
+  const pageFields = fields.filter(f => (f.pdfMapping?.page || f.page || 1) === pageNum && f.type !== 'Section' && f.type !== 'Divider');
 
   return (
     <div 
