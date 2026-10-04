@@ -12,6 +12,7 @@ import {
   Upload
 } from 'lucide-react';
 import { loadPdfDocument, renderPdfPageToCanvas } from '../utils/pdfRenderer';
+import { getSyncedCheckboxCoordinates } from '../utils/checkboxHelper';
 import { getPageImageUrl, getDocumentPdfUrl } from '../services/api';
 
 /**
@@ -33,6 +34,9 @@ function PdfPageCard({
   _onDeleteField,
   onBoxMouseDown,
   onResizeHandleMouseDown,
+  onCheckboxOptMouseDown,
+  onCheckboxOptResizeMouseDown,
+  onCheckboxOptClick,
   onPageMouseDown,
   onPageMouseMove,
   onPageMouseUp,
@@ -162,110 +166,135 @@ function PdfPageCard({
           const coords = getFieldCoordinates(field);
           const isSelected = field.id === selectedFieldId;
           const isCheckbox = field.type === 'Checkbox';
-          const optsCoords = field.optionsCoordinates || field.pdfMapping?.optionsCoordinates;
+          const checkboxOpts = isCheckbox ? getSyncedCheckboxCoordinates(field) : [];
 
           return (
             <React.Fragment key={`field_group_${field.id}`}>
-              {/* 1. Main bounding box container & SVG anchor pin */}
-              <div
-                data-pdf-field-id={field.id}
-                data-pdf-page={pageNum}
-                onMouseDown={(e) => onBoxMouseDown(e, field, pageNum)}
-                onClick={() => onSelectField?.(field.id)}
-                onMouseEnter={() => onHoverField?.(field.id)}
-                onMouseLeave={() => onHoverField?.(null)}
-                style={{
-                  position: 'absolute',
-                  left: coords.x,
-                  top: coords.y,
-                  width: coords.w,
-                  height: coords.h,
-                  cursor: activeToolMode === 'draw' ? 'crosshair' : 'move'
-                }}
-                title={`PDF Field: ${coords.label} (Type: ${coords.type}) on Page ${pageNum}`}
-                className={`group rounded-xs transition-colors duration-150 z-20 ${
-                  isSelected
-                    ? 'bg-[#92e0f0]/85 border border-cyan-400/80 shadow-xs'
-                    : hoveredFieldId === field.id
-                    ? 'bg-[#a8e8f4]/75 border border-cyan-400/60 shadow-xs'
-                    : 'bg-[#cbf1f8]/60 border border-cyan-400/35 hover:bg-[#b8ebf5]/70'
-                }`}
-              >
-                {/* Left Anchor Pin matching PlatoForms Pic 2: blue ring with white center */}
-                {(isSelected || hoveredFieldId === field.id) && (
-                  <div
-                    data-pdf-anchor={field.id}
-                    className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 border-blue-500 bg-white z-30 pointer-events-none shadow-xs"
-                  />
-                )}
-
-                {/* Corner and edge amber circular handles when selected matching PlatoForms Pic 2 */}
-                {isSelected && (
-                  <>
-                    <div className="absolute -left-1 -top-1 w-2.5 h-2.5 rounded-full border-2 border-amber-400 bg-white z-30 pointer-events-none shadow-xs" />
-                    <div className="absolute -right-1 -top-1 w-2.5 h-2.5 rounded-full border-2 border-amber-400 bg-white z-30 pointer-events-none shadow-xs" />
-                    <div className="absolute -left-1 -bottom-1 w-2.5 h-2.5 rounded-full border-2 border-amber-400 bg-white z-30 pointer-events-none shadow-xs" />
-                    <div className="absolute -right-1 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 border-amber-400 bg-white z-30 pointer-events-none shadow-xs" />
+              {/* 1. Main bounding box container for NON-checkbox fields */}
+              {!isCheckbox && (
+                <div
+                  data-pdf-field-id={field.id}
+                  data-pdf-page={pageNum}
+                  onMouseDown={(e) => onBoxMouseDown(e, field, pageNum)}
+                  onClick={() => onSelectField?.(field.id)}
+                  onMouseEnter={() => onHoverField?.(field.id)}
+                  onMouseLeave={() => onHoverField?.(null)}
+                  style={{
+                    position: 'absolute',
+                    left: coords.x,
+                    top: coords.y,
+                    width: coords.w,
+                    height: coords.h,
+                    cursor: activeToolMode === 'draw' ? 'crosshair' : 'move'
+                  }}
+                  title={`PDF Field: ${coords.label} (Type: ${coords.type}) on Page ${pageNum}`}
+                  className={`group rounded-xs transition-colors duration-150 z-20 ${
+                    isSelected
+                      ? 'bg-[#92e0f0]/85 border border-cyan-400/80 shadow-xs'
+                      : hoveredFieldId === field.id
+                      ? 'bg-[#a8e8f4]/75 border border-cyan-400/60 shadow-xs'
+                      : 'bg-[#cbf1f8]/60 border border-cyan-400/35 hover:bg-[#b8ebf5]/70'
+                  }`}
+                >
+                  {/* Left Anchor Pin matching PlatoForms: blue ring with white center */}
+                  {(isSelected || hoveredFieldId === field.id) && (
                     <div
-                      onMouseDown={(e) => onResizeHandleMouseDown(e, field, pageNum)}
-                      title="Drag to resize editable area"
-                      className="absolute -right-1 -bottom-1 w-2.5 h-2.5 rounded-full border-2 border-amber-400 bg-white cursor-se-resize z-30 hover:scale-125 transition-transform shadow-xs"
+                      data-pdf-anchor={field.id}
+                      className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 border-blue-500 bg-white z-30 pointer-events-none shadow-xs"
                     />
-                  </>
-                )}
+                  )}
 
-                {/* Live Text Value display inside box for text/date/dropdown fields */}
-                {!isCheckbox && field.value && (
-                  <div className="absolute inset-0 px-1 py-0.5 text-[10px] font-medium text-slate-800 pointer-events-none truncate overflow-hidden flex items-center">
-                    {field.value}
-                  </div>
-                )}
-              </div>
+                  {/* Corner and edge amber circular handles when selected */}
+                  {isSelected && (
+                    <>
+                      <div className="absolute -left-1 -top-1 w-2.5 h-2.5 rounded-full border-2 border-amber-400 bg-white z-30 pointer-events-none shadow-xs" />
+                      <div className="absolute -right-1 -top-1 w-2.5 h-2.5 rounded-full border-2 border-amber-400 bg-white z-30 pointer-events-none shadow-xs" />
+                      <div className="absolute -left-1 -bottom-1 w-2.5 h-2.5 rounded-full border-2 border-amber-400 bg-white z-30 pointer-events-none shadow-xs" />
+                      <div className="absolute -right-1 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 border-amber-400 bg-white z-30 pointer-events-none shadow-xs" />
+                      <div
+                        onMouseDown={(e) => onResizeHandleMouseDown(e, field, pageNum)}
+                        title="Drag to resize editable area"
+                        className="absolute -right-1 -bottom-1 w-2.5 h-2.5 rounded-full border-2 border-amber-400 bg-white cursor-se-resize z-30 hover:scale-125 transition-transform shadow-xs"
+                      />
+                    </>
+                  )}
 
-              {/* 2. Individual Checkbox Targets on the PDF Canvas for exact option selection! */}
-              {isCheckbox && optsCoords && optsCoords.length > 0 && optsCoords.map((opt, oIdx) => {
+                  {/* Live Text Value display inside box for text/date/dropdown fields */}
+                  {field.value && (
+                    <div className="absolute inset-0 px-1 py-0.5 text-[10px] font-medium text-slate-800 pointer-events-none truncate overflow-hidden flex items-center">
+                      {field.value}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 2. Individual Movable Small Checkbox Boxes on the PDF Canvas */}
+              {isCheckbox && checkboxOpts.map((opt, oIdx) => {
                 const isOptChecked = Array.isArray(field.value)
                   ? field.value.includes(opt.label)
-                  : field.value === opt.label;
-
-                const handleOptClick = (e) => {
-                  e.stopPropagation();
-                  onSelectField?.(field.id);
-                  let nextVal;
-                  if (field.multipleChoices) {
-                    const list = Array.isArray(field.value) ? field.value : (field.value ? [field.value] : []);
-                    nextVal = list.includes(opt.label)
-                      ? list.filter(v => v !== opt.label)
-                      : [...list, opt.label];
-                  } else {
-                    nextVal = field.value === opt.label ? '' : opt.label;
-                  }
-                  onUpdateField?.(field.id, { value: nextVal });
-                };
+                  : (field.value === opt.label || (checkboxOpts.length === 1 && (field.value === true || field.value === 'true' || field.value === opt.label)));
 
                 return (
                   <div
                     key={`cb_target_${field.id}_${oIdx}`}
-                    onClick={handleOptClick}
+                    data-pdf-field-id={oIdx === 0 ? field.id : undefined}
+                    data-pdf-page={pageNum}
+                    onMouseDown={(e) => onCheckboxOptMouseDown(e, field, pageNum, oIdx)}
+                    onClick={(e) => onCheckboxOptClick(e, field, oIdx)}
+                    onMouseEnter={() => onHoverField?.(field.id)}
+                    onMouseLeave={() => onHoverField?.(null)}
                     style={{
                       position: 'absolute',
                       left: opt.x,
                       top: opt.y,
-                      width: opt.w,
-                      height: opt.h,
-                      cursor: 'pointer'
+                      width: opt.w || '3.0%',
+                      height: opt.h || '2.4%',
+                      cursor: activeToolMode === 'draw' ? 'crosshair' : 'move'
                     }}
-                    title={`${opt.label} (${isOptChecked ? 'Selected' : 'Click to tick on PDF'})`}
-                    className={`z-30 rounded-[2px] transition-all flex items-center justify-center select-none ${
-                      isOptChecked
-                        ? 'bg-blue-500/15 border-2 border-blue-600 shadow-xs'
-                        : 'border border-blue-400/50 bg-blue-400/10 hover:border-blue-600 hover:bg-blue-400/25'
+                    title={`Checkbox #${oIdx + 1}: ${opt.label} (Drag to move, click to check/select)`}
+                    className={`group rounded-[3px] transition-all duration-150 z-20 flex items-center justify-center select-none ${
+                      isSelected
+                        ? 'bg-[#92e0f0]/90 border-2 border-blue-600 shadow-md ring-2 ring-blue-400/40'
+                        : hoveredFieldId === field.id
+                        ? 'bg-[#a8e8f4]/85 border-2 border-cyan-500 shadow-xs'
+                        : 'bg-[#cbf1f8]/70 border border-blue-400/70 hover:bg-[#b8ebf5]/90 hover:border-blue-600 shadow-2xs'
                     }`}
                   >
+                    {/* Anchor Pin on First Box for SVG Connector Line */}
+                    {oIdx === 0 && (isSelected || hoveredFieldId === field.id) && (
+                      <div
+                        data-pdf-anchor={field.id}
+                        className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 border-blue-500 bg-white z-30 pointer-events-none shadow-xs"
+                      />
+                    )}
+
+                    {/* Floating Option Label Badge when selected or hovered */}
+                    {(isSelected || hoveredFieldId === field.id) && (
+                      <div className="absolute -top-5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-slate-900/90 text-white text-[9px] font-semibold whitespace-nowrap pointer-events-none shadow-xs z-30 flex items-center gap-1">
+                        <span className="text-cyan-300 font-mono">#{oIdx + 1}</span>
+                        <span className="truncate max-w-[90px]">{opt.label}</span>
+                      </div>
+                    )}
+
+                    {/* Corner Resize Handle and Indicators when selected */}
+                    {isSelected && (
+                      <>
+                        <div className="absolute -left-1 -top-1 w-2 h-2 rounded-full border border-amber-400 bg-white z-30 pointer-events-none shadow-2xs" />
+                        <div className="absolute -right-1 -top-1 w-2 h-2 rounded-full border border-amber-400 bg-white z-30 pointer-events-none shadow-2xs" />
+                        <div className="absolute -left-1 -bottom-1 w-2 h-2 rounded-full border border-amber-400 bg-white z-30 pointer-events-none shadow-2xs" />
+                        <div
+                          onMouseDown={(e) => onCheckboxOptResizeMouseDown(e, field, pageNum, oIdx)}
+                          title="Drag to resize small checkbox"
+                          className="absolute -right-1 -bottom-1 w-2.5 h-2.5 rounded-full border-2 border-amber-400 bg-white cursor-se-resize z-30 hover:scale-125 transition-transform shadow-2xs"
+                        />
+                      </>
+                    )}
+
+                    {/* Tick Mark Inside Box */}
                     {isOptChecked && (
                       <span
                         style={{ color: field.tickColor || '#000000' }}
-                        className="font-bold flex items-center justify-center w-full h-full pointer-events-none scale-125"
+                        className="font-bold flex items-center justify-center w-full h-full pointer-events-none scale-110"
                       >
                         {field.tickFormat === 'Cross' ? (
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="w-full h-full p-0.5">
@@ -391,6 +420,8 @@ export default function PdfViewer({
   // Dragging and resizing states for PDF bounding boxes
   const [dragState, setDragState] = useState(null); // { fieldId, pageNum, startX, startY, origX, origY }
   const [resizeState, setResizeState] = useState(null); // { fieldId, pageNum, startX, startY, origW, origH }
+  const [cbDragState, setCbDragState] = useState(null); // { fieldId, pageNum, optIndex, startX, startY, origX, origY, hasMoved }
+  const [cbResizeState, setCbResizeState] = useState(null); // { fieldId, pageNum, optIndex, startX, startY, origW, origH }
 
   const scrollContainerRef = useRef(null);
 
@@ -806,6 +837,53 @@ export default function PdfViewer({
     });
   };
 
+  // 4. DRAG INDIVIDUAL CHECKBOX OPTION BOX
+  const handleCheckboxOptMouseDown = (e, field, pageNum, optIndex) => {
+    e.stopPropagation();
+    onSelectField(field.id);
+    if (activeToolMode === 'draw') return;
+
+    const opts = getSyncedCheckboxCoordinates(field);
+    const target = opts[optIndex];
+    if (!target) return;
+
+    setCbDragState({
+      fieldId: field.id,
+      pageNum,
+      optIndex,
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: parseFloat(target.x) || 24,
+      origY: parseFloat(target.y) || 28,
+      hasMoved: false
+    });
+  };
+
+  // 5. RESIZE INDIVIDUAL CHECKBOX OPTION BOX
+  const handleCheckboxOptResizeMouseDown = (e, field, pageNum, optIndex) => {
+    e.stopPropagation();
+    onSelectField(field.id);
+
+    const opts = getSyncedCheckboxCoordinates(field);
+    const target = opts[optIndex];
+    if (!target) return;
+
+    setCbResizeState({
+      fieldId: field.id,
+      pageNum,
+      optIndex,
+      startX: e.clientX,
+      startY: e.clientY,
+      origW: parseFloat(target.w) || 3.0,
+      origH: parseFloat(target.h) || 2.4
+    });
+  };
+
+  const handleCheckboxOptClick = (e, field, _optIndex) => {
+    e.stopPropagation();
+    onSelectField(field.id);
+  };
+
   // Global mouse move & up listeners for drag & resize across pages
   useEffect(() => {
     const handleGlobalMouseMove = (e) => {
@@ -853,15 +931,104 @@ export default function PdfViewer({
           setWidthDraft((newW * pointsPerPercentW).toFixed(1));
           setHeightDraft((newH * pointsPerPercentH).toFixed(1));
         }
+      } else if (cbDragState) {
+        const pageEl = document.getElementById(`pdf-page-container-${cbDragState.pageNum}`);
+        if (!pageEl) return;
+        const rect = pageEl.getBoundingClientRect();
+        const deltaX = ((e.clientX - cbDragState.startX) / rect.width) * 100;
+        const deltaY = ((e.clientY - cbDragState.startY) / rect.height) * 100;
+
+        if (Math.abs(deltaX) > 0.15 || Math.abs(deltaY) > 0.15) {
+          cbDragState.hasMoved = true;
+        }
+
+        const newX = Math.max(0, Math.min(97, cbDragState.origX + deltaX));
+        const newY = Math.max(0, Math.min(98, cbDragState.origY + deltaY));
+
+        const field = fields.find(f => f.id === cbDragState.fieldId);
+        if (field) {
+          const currentOpts = getSyncedCheckboxCoordinates(field);
+          const updatedOpts = currentOpts.map((opt, idx) => {
+            if (idx === cbDragState.optIndex) {
+              return {
+                ...opt,
+                x: `${newX.toFixed(2)}%`,
+                y: `${newY.toFixed(2)}%`
+              };
+            }
+            return opt;
+          });
+          onUpdateField(field.id, {
+            optionsCoordinates: updatedOpts,
+            pdfMapping: {
+              ...(field.pdfMapping || {}),
+              page: cbDragState.pageNum,
+              optionsCoordinates: updatedOpts
+            }
+          });
+        }
+      } else if (cbResizeState) {
+        const pageEl = document.getElementById(`pdf-page-container-${cbResizeState.pageNum}`);
+        if (!pageEl) return;
+        const rect = pageEl.getBoundingClientRect();
+        const deltaW = ((e.clientX - cbResizeState.startX) / rect.width) * 100;
+        const deltaH = ((e.clientY - cbResizeState.startY) / rect.height) * 100;
+
+        const newW = Math.max(1.5, Math.min(15, cbResizeState.origW + deltaW));
+        const newH = Math.max(1.2, Math.min(15, cbResizeState.origH + deltaH));
+
+        const field = fields.find(f => f.id === cbResizeState.fieldId);
+        if (field) {
+          const currentOpts = getSyncedCheckboxCoordinates(field);
+          const updatedOpts = currentOpts.map((opt, idx) => {
+            if (idx === cbResizeState.optIndex) {
+              return {
+                ...opt,
+                w: `${newW.toFixed(2)}%`,
+                h: `${newH.toFixed(2)}%`
+              };
+            }
+            return opt;
+          });
+          onUpdateField(field.id, {
+            optionsCoordinates: updatedOpts,
+            pdfMapping: {
+              ...(field.pdfMapping || {}),
+              optionsCoordinates: updatedOpts
+            }
+          });
+        }
       }
     };
 
     const handleGlobalMouseUp = () => {
+      if (cbDragState && !cbDragState.hasMoved) {
+        // Toggle the clicked checkbox option
+        const field = fields.find(f => f.id === cbDragState.fieldId);
+        if (field) {
+          const opts = getSyncedCheckboxCoordinates(field);
+          const targetOpt = opts[cbDragState.optIndex];
+          if (targetOpt) {
+            let nextVal;
+            if (field.multipleChoices) {
+              const list = Array.isArray(field.value) ? field.value : (field.value ? [field.value] : []);
+              nextVal = list.includes(targetOpt.label)
+                ? list.filter(v => v !== targetOpt.label)
+                : [...list, targetOpt.label];
+            } else {
+              nextVal = field.value === targetOpt.label ? '' : targetOpt.label;
+            }
+            onUpdateField(field.id, { value: nextVal });
+          }
+        }
+      }
       setDragState(null);
       setResizeState(null);
+      setCbDragState(null);
+      setCbResizeState(null);
     };
 
-    if (dragState || resizeState) {
+    if (dragState || resizeState || cbDragState || cbResizeState) {
       window.addEventListener('mousemove', handleGlobalMouseMove);
       window.addEventListener('mouseup', handleGlobalMouseUp);
     }
@@ -870,7 +1037,7 @@ export default function PdfViewer({
       window.removeEventListener('mousemove', handleGlobalMouseMove);
       window.removeEventListener('mouseup', handleGlobalMouseUp);
     };
-  }, [dragState, resizeState, fields, onUpdateField, pointsPerPercentW, pointsPerPercentH]);
+  }, [dragState, resizeState, cbDragState, cbResizeState, fields, onUpdateField, pointsPerPercentW, pointsPerPercentH]);
 
   return (
     <section 
@@ -1076,6 +1243,9 @@ export default function PdfViewer({
             onDeleteField={onDeleteField}
             onBoxMouseDown={handleBoxMouseDown}
             onResizeHandleMouseDown={handleResizeHandleMouseDown}
+            onCheckboxOptMouseDown={handleCheckboxOptMouseDown}
+            onCheckboxOptResizeMouseDown={handleCheckboxOptResizeMouseDown}
+            onCheckboxOptClick={handleCheckboxOptClick}
             onPageMouseDown={handlePageMouseDown}
             onPageMouseMove={handlePageMouseMove}
             onPageMouseUp={handlePageMouseUp}

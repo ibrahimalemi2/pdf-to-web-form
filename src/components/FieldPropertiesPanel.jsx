@@ -582,6 +582,99 @@ export default function FieldPropertiesPanel({
               </select>
             </div>
 
+            {/* Quick Box Count Presets: 1, 2, 3, 4 Boxes */}
+            <div className="bg-slate-50 p-2 rounded-xl border border-slate-200/90 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-700">Checkbox Count on PDF:</span>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4].map((count) => {
+                    const currentCount = (field.options || []).length;
+                    const isActive = currentCount === count;
+                    return (
+                      <button
+                        key={count}
+                        type="button"
+                        onClick={() => {
+                          const current = field.options || [];
+                          let updated;
+                          if (count > current.length) {
+                            updated = [...current];
+                            while (updated.length < count) {
+                              updated.push(`Option ${updated.length + 1}`);
+                            }
+                          } else {
+                            updated = current.slice(0, count);
+                          }
+                          onUpdateField(field.id, { options: updated });
+                        }}
+                        className={`px-2 py-0.5 text-xs font-bold rounded-md transition cursor-pointer ${
+                          isActive
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 hover:text-slate-900'
+                        }`}
+                      >
+                        {count} {count === 1 ? 'Box' : 'Boxes'}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="text-[10px] text-blue-700 bg-blue-50/80 px-2 py-1 rounded-md border border-blue-200/60 flex items-center justify-between">
+                <span>📍 <b>{(field.options || []).length} small {(field.options || []).length === 1 ? 'box' : 'boxes'}</b> on PDF. Drag each small box to position it.</span>
+                <div className="flex items-center gap-1.5 ml-1 shrink-0">
+                  <button
+                    type="button"
+                    title="Align all checkbox boxes in a horizontal row on the PDF"
+                    onClick={() => {
+                      const opts = field.options || ['Option 1', 'Option 2'];
+                      const coords = field.optionsCoordinates || field.pdfMapping?.optionsCoordinates || [];
+                      const startX = parseFloat(coords[0]?.x || field.pdfMapping?.x || '24') || 24;
+                      const startY = parseFloat(coords[0]?.y || field.pdfMapping?.y || '28') || 28;
+                      const aligned = opts.map((lbl, i) => ({
+                        label: lbl,
+                        x: `${Math.min(94, startX + i * 13).toFixed(1)}%`,
+                        y: `${startY.toFixed(1)}%`,
+                        w: coords[i]?.w || '3.0%',
+                        h: coords[i]?.h || '2.4%'
+                      }));
+                      onUpdateField(field.id, {
+                        optionsCoordinates: aligned,
+                        pdfMapping: { ...(field.pdfMapping || {}), optionsCoordinates: aligned }
+                      });
+                    }}
+                    className="text-[9px] font-bold text-blue-700 bg-white border border-blue-300 px-1.5 py-0.5 rounded hover:bg-blue-100 cursor-pointer transition"
+                  >
+                    Align Row
+                  </button>
+                  <button
+                    type="button"
+                    title="Align all checkbox boxes in a vertical column on the PDF"
+                    onClick={() => {
+                      const opts = field.options || ['Option 1', 'Option 2'];
+                      const coords = field.optionsCoordinates || field.pdfMapping?.optionsCoordinates || [];
+                      const startX = parseFloat(coords[0]?.x || field.pdfMapping?.x || '24') || 24;
+                      const startY = parseFloat(coords[0]?.y || field.pdfMapping?.y || '28') || 28;
+                      const aligned = opts.map((lbl, i) => ({
+                        label: lbl,
+                        x: `${startX.toFixed(1)}%`,
+                        y: `${Math.min(96, startY + i * 3.8).toFixed(1)}%`,
+                        w: coords[i]?.w || '3.0%',
+                        h: coords[i]?.h || '2.4%'
+                      }));
+                      onUpdateField(field.id, {
+                        optionsCoordinates: aligned,
+                        pdfMapping: { ...(field.pdfMapping || {}), optionsCoordinates: aligned }
+                      });
+                    }}
+                    className="text-[9px] font-bold text-blue-700 bg-white border border-blue-300 px-1.5 py-0.5 rounded hover:bg-blue-100 cursor-pointer transition"
+                  >
+                    Align Col
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {/* Choice Items Grid */}
             <div className={`grid gap-2 ${
               field.choicesPerRow === 1 ? 'grid-cols-1' :

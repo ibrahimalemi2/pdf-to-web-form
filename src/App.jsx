@@ -10,6 +10,7 @@ import PreviewMode from './components/PreviewMode';
 import { GitBranch, CheckCircle2, ArrowRight } from 'lucide-react';
 import { INITIAL_FIELDS } from './constants/formFields';
 import { loadPdfDocument, extractClientFieldsFromPdf } from './utils/pdfRenderer';
+import { getSyncedCheckboxCoordinates, syncCheckboxField } from './utils/checkboxHelper';
 import {
   API_BASE_URL,
   uploadPdf,
@@ -123,6 +124,17 @@ export default function App() {
       const isCore = ['Assignment', 'Section', 'Teacher', 'Class'].includes(normLabel);
       const isDate = normLabel.toLowerCase().includes('date') || (df.type && df.type.toLowerCase().includes('date'));
       const finalType = df.type || (isDate ? 'Date' : 'Short Text');
+      const isCb = finalType === 'Checkbox';
+      const rawOptions = df.options || (finalType === 'Dropdown' ? ['Option A', 'Option B', 'Option C'] : (isCb ? ['Option 1', 'Option 2'] : undefined));
+      const cbCoords = isCb ? getSyncedCheckboxCoordinates({
+        options: rawOptions,
+        optionsCoordinates: df.optionsCoordinates,
+        pdfMapping: {
+          x: df.percentage?.targetX || df.percentage?.x || '24%',
+          y: df.percentage?.targetY || df.percentage?.y || '29%',
+          optionsCoordinates: df.optionsCoordinates
+        }
+      }) : undefined;
       return {
         id: df.id || `field_${Date.now()}_${idx}`,
         type: finalType,
@@ -142,8 +154,8 @@ export default function App() {
         readOnly: false,
         hidden: false,
         columnSpan: df.columnSpan || (finalType === 'Long Text' ? 2 : 1),
-        options: df.options || (finalType === 'Dropdown' ? ['Option A', 'Option B', 'Option C'] : (finalType === 'Checkbox' ? ['Option 1', 'Option 2'] : undefined)),
-        optionsCoordinates: df.optionsCoordinates || undefined,
+        options: rawOptions,
+        optionsCoordinates: isCb ? cbCoords : (df.optionsCoordinates || undefined),
         multipleChoices: df.multipleChoices ?? false,
         choicesPerRow: df.choicesPerRow || 2,
         tickFormat: df.tickFormat || 'Tick',
@@ -156,7 +168,7 @@ export default function App() {
           y: df.percentage?.targetY || df.percentage?.y || '29%',
           w: df.percentage?.targetW || df.percentage?.w || '48%',
           h: df.percentage?.targetH || df.percentage?.h || '4.8%',
-          optionsCoordinates: df.optionsCoordinates || undefined
+          optionsCoordinates: isCb ? cbCoords : (df.optionsCoordinates || undefined)
         }
       };
     });
@@ -378,7 +390,7 @@ export default function App() {
       'Long Text': 'Paragraph Notes',
       'Dropdown': 'Select Choice',
       'Date': 'Effective Date',
-      'Checkbox': 'Consent Agreement',
+      'Checkbox': 'Checkboxes',
       'Signature': 'Authorized Signature',
       'File Upload': 'Document Attachment',
       'Section': 'Page Break: Next Step',
@@ -387,6 +399,14 @@ export default function App() {
     };
 
     const isDate = toolType === 'Date';
+    const isCb = toolType === 'Checkbox';
+    const cbOpts = isCb ? ['Option 1', 'Option 2'] : undefined;
+    const initialY = Math.min(25 + fields.length * 8, 80);
+    const cbCoords = isCb ? getSyncedCheckboxCoordinates({
+      options: cbOpts,
+      pdfMapping: { x: '24%', y: `${initialY}%` }
+    }) : undefined;
+
     const newField = {
       id: newId,
       type: toolType,
@@ -417,19 +437,21 @@ export default function App() {
       readOnly: false,
       hidden: false,
       columnSpan: toolType === 'Long Text' || toolType === 'File Upload' || isDivider || toolType === 'Header' ? 2 : 1,
-      options: toolType === 'Dropdown' ? ['Option A', 'Option B', 'Option C'] : toolType === 'Checkbox' ? ['Single', 'Married'] : undefined,
+      options: toolType === 'Dropdown' ? ['Option A', 'Option B', 'Option C'] : cbOpts,
+      optionsCoordinates: cbCoords,
       multipleChoices: false,
       choicesPerRow: 2,
       tickFormat: 'Tick',
       tickColor: '#000000',
       pdfMapping: {
         page: 1,
-        badgeW: '240.0',
+        badgeW: isCb ? '36.0' : '240.0',
         badgeH: '26.6',
         x: '24%',
-        y: `${Math.min(25 + fields.length * 8, 80)}%`,
-        w: '50%',
-        h: '5%'
+        y: `${initialY}%`,
+        w: isCb ? '12%' : '50%',
+        h: isCb ? '4%' : '5%',
+        optionsCoordinates: cbCoords
       }
     };
 
@@ -490,7 +512,14 @@ export default function App() {
 
   // Update field handler
   const handleUpdateField = (id, updates) => {
-    setFields(prev => prev.map(f => (f.id === id ? { ...f, ...updates } : f)));
+    setFields(prev => prev.map(f => {
+      if (f.id !== id) return f;
+      const merged = { ...f, ...updates };
+      if (merged.type === 'Checkbox') {
+        return syncCheckboxField(f, updates);
+      }
+      return merged;
+    }));
   };
 
   // Delete field handler
