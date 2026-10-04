@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   CheckCircle2,
-  ChevronRight,
+  GitBranch,
   Check,
   Sliders,
   HelpCircle,
@@ -19,11 +19,13 @@ import {
   Loader2
 } from 'lucide-react';
 import { downloadFilledPdf } from '../services/api';
+import { computeDynamicFieldStates } from '../utils/logicEngine';
 
 export default function PreviewMode({
   formTitle = "Assignment Submission Form",
   formDescription = "Collects student assignment details and answers for parallel computing coursework.",
   fields = [],
+  logicRules = [],
   documentName = "Assignment_1_F23-2353.pdf",
   documentId = "assignment",
   pdfFile = null,
@@ -51,6 +53,11 @@ export default function PreviewMode({
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
+  // Reactive dynamic states computed from active logic rules and current user responses
+  const dynamicStates = React.useMemo(() => {
+    return computeDynamicFieldStates(fields, logicRules, formData);
+  }, [fields, logicRules, formData]);
+
   // Group fields into sequential steps divided by 'Section' or 'Divider' fields
   const steps = React.useMemo(() => {
     const rawList = [];
@@ -58,6 +65,8 @@ export default function PreviewMode({
     let currentTitle = formTitle || 'Part 1: General Details';
 
     fields.forEach((f) => {
+      const isHidden = dynamicStates[f.id]?.hidden ?? f.hidden;
+
       if (f.type === 'Section' || f.type === 'Divider') {
         if (currentFields.length > 0 || rawList.length === 0) {
           rawList.push({
@@ -69,7 +78,7 @@ export default function PreviewMode({
           currentFields = [];
         }
         currentTitle = f.label || `Part ${rawList.length + 1}`;
-      } else {
+      } else if (!isHidden) {
         currentFields.push(f);
       }
     });
@@ -83,7 +92,7 @@ export default function PreviewMode({
 
     const cleaned = rawList.filter((s, idx) => s.fields.length > 0 || idx === 0);
     return cleaned.length > 0 ? cleaned : [{ title: formTitle, label: formTitle, fields: [], divider: null }];
-  }, [fields, formTitle]);
+  }, [fields, formTitle, dynamicStates]);
 
   const [currentStep, setCurrentStep] = useState(0);
   const safeStep = Math.min(currentStep, Math.max(0, steps.length - 1));
@@ -240,8 +249,10 @@ export default function PreviewMode({
     const stepErrors = {};
 
     currentFields.forEach(f => {
-      if (f.hidden || f.type === 'Header' || f.type === 'Section' || f.type === 'Divider') return;
-      if (f.required) {
+      const isHidden = dynamicStates[f.id]?.hidden ?? f.hidden;
+      const isRequired = dynamicStates[f.id]?.required ?? f.required;
+      if (isHidden || f.type === 'Header' || f.type === 'Section' || f.type === 'Divider') return;
+      if (isRequired) {
         const val = formData[f.id];
         if (f.type === 'Checkbox') {
           if (!val || (Array.isArray(val) && val.length === 0)) {
@@ -272,8 +283,10 @@ export default function PreviewMode({
 
     steps.forEach((stepItem, stepIdx) => {
       stepItem.fields.forEach(f => {
-        if (f.hidden || f.type === 'Header' || f.type === 'Section' || f.type === 'Divider') return;
-        if (f.required) {
+        const isHidden = dynamicStates[f.id]?.hidden ?? f.hidden;
+        const isRequired = dynamicStates[f.id]?.required ?? f.required;
+        if (isHidden || f.type === 'Header' || f.type === 'Section' || f.type === 'Divider') return;
+        if (isRequired) {
           const val = formData[f.id];
           if (f.type === 'Checkbox') {
             if (!val || (Array.isArray(val) && val.length === 0)) {
@@ -306,11 +319,26 @@ export default function PreviewMode({
     setIsDownloading(true);
     showToast('⏳ Generating official PDF with your filled responses...');
     try {
+      // Exclude values of fields conditionally hidden by logic rules so they aren't stamped on PDF
+      const activeFormData = {};
+      Object.keys(formData).forEach(k => {
+        if (!dynamicStates[k]?.hidden) {
+          activeFormData[k] = formData[k];
+        }
+      });
+
+      const activeFields = fields.map(f => {
+        if (dynamicStates[f.id]?.hidden) {
+          return { ...f, hidden: true, value: '' };
+        }
+        return f;
+      });
+
       const fileName = await downloadFilledPdf({
         documentId,
         filename: documentName,
-        formData,
-        fields,
+        formData: activeFormData,
+        fields: activeFields,
         pdfFile
       });
       showToast(`🎉 Downloaded: ${fileName}`);
@@ -329,9 +357,9 @@ export default function PreviewMode({
     setCurrentStepIndex(0);
   };
 
-  // Filter interactive fields for Conversational mode (excluding headers and dividers)
+  // Filter interactive fields for Conversational mode (excluding headers, dividers, and conditionally hidden fields)
   const interactiveFields = fields.filter(
-    f => f.type !== 'Header' && f.type !== 'Section' && f.type !== 'Divider' && !f.hidden
+    f => f.type !== 'Header' && f.type !== 'Section' && f.type !== 'Divider' && !(dynamicStates[f.id]?.hidden ?? f.hidden)
   );
 
   const currentConversationalField = interactiveFields[currentStepIndex] || interactiveFields[0];
@@ -339,7 +367,9 @@ export default function PreviewMode({
   const handleConversationalNext = () => {
     if (!currentConversationalField) return;
 
-    if (currentConversationalField.required) {
+    const isRequired = dynamicStates[currentConversationalField.id]?.required ?? currentConversationalField.required;
+
+    if (isRequired) {
       const val = formData[currentConversationalField.id];
       if (currentConversationalField.type === 'Checkbox') {
         if (!val || (Array.isArray(val) && val.length === 0)) {
@@ -846,6 +876,17 @@ export default function PreviewMode({
               </div>
             )}
           </div>
+
+          {/* Active Logic Rules Badge */}
+          {logicRules.length > 0 && (
+            <div
+              title={`${logicRules.filter(r => r.enabled !== false).length} conditional logic rules evaluating dynamically`}
+              className="hidden md:flex items-center gap-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200/90 px-2.5 py-1 rounded-lg text-xs font-semibold select-none shadow-2xs"
+            >
+              <GitBranch className="w-3.5 h-3.5 text-indigo-600" />
+              <span>{logicRules.filter(r => r.enabled !== false).length} Logic Rules</span>
+            </div>
+          )}
 
           {/* Fill Sample Data Button */}
           <button

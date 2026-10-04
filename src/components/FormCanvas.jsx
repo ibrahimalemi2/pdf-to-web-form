@@ -34,6 +34,7 @@ import {
   SplitSquareVertical,
   Heading,
   SeparatorHorizontal,
+  GitBranch,
   X
 } from 'lucide-react';
 
@@ -144,7 +145,9 @@ export default function FormCanvas({
   onToggleConnectors = () => {},
   isTemplateMatch = false,
   onSaveTemplate = () => {},
-  isSavingTemplate = false
+  isSavingTemplate = false,
+  logicRules = [],
+  onNavigateToLogics = () => {}
 }) {
   const [editingLabelId, setEditingLabelId] = useState(null);
   const [labelDraft, setLabelDraft] = useState('');
@@ -1091,6 +1094,29 @@ export default function FormCanvas({
                         <span>{typeInfo.shortName}</span>
                         <ChevronDown className="w-2.5 h-2.5 opacity-60" />
                       </div>
+
+                      {/* Conditional Logic Indicator Badge */}
+                      {(() => {
+                        const fieldRules = logicRules.filter(r =>
+                          r.condition?.fieldId === field.id || (r.actions || []).some(a => a.targetFieldId === field.id)
+                        );
+                        if (fieldRules.length === 0) return null;
+
+                        return (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onNavigateToLogics?.();
+                            }}
+                            title={`Conditional logic active (${fieldRules.length} rule${fieldRules.length > 1 ? 's' : ''}). Click to configure in Logic Studio.`}
+                            className="inline-flex items-center gap-1 ml-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/90 transition-all cursor-pointer shadow-2xs"
+                          >
+                            <GitBranch className="w-2.5 h-2.5 text-indigo-600" />
+                            <span>Logic ({fieldRules.length})</span>
+                          </button>
+                        );
+                      })()}
 
                       {/* Clickable Quick Type Switcher Dropdown Popover */}
                       {openTypeChooserId === field.id && (

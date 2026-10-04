@@ -7,7 +7,8 @@ import FieldPropertiesPanel from './components/FieldPropertiesPanel';
 import UploadView from './components/UploadView';
 import ConnectorLines from './components/ConnectorLines';
 import PreviewMode from './components/PreviewMode';
-import { GitBranch, CheckCircle2, ArrowRight } from 'lucide-react';
+import LogicBuilder from './components/LogicBuilder';
+import { CheckCircle2 } from 'lucide-react';
 import { INITIAL_FIELDS } from './constants/formFields';
 import { loadPdfDocument, extractClientFieldsFromPdf } from './utils/pdfRenderer';
 import { getSyncedCheckboxCoordinates, syncCheckboxField } from './utils/checkboxHelper';
@@ -44,6 +45,9 @@ export default function App() {
     title: 'Assignment Submission Form',
     description: 'Collects student assignment details and answers for parallel computing coursework.'
   });
+
+  // Dynamic Form Logic Rules
+  const [logicRules, setLogicRules] = useState([]);
 
   // Template memory & fingerprint state
   const [currentFingerprint, setCurrentFingerprint] = useState(null);
@@ -236,6 +240,9 @@ export default function App() {
       if (result.isTemplateMatch && result.fields && result.fields.length > 0) {
         // SILENT TEMPLATE MATCH: Instantly return stored custom schema with 100% precision
         setFields(result.fields);
+        if (result.formMeta?.logicRules) {
+          setLogicRules(result.formMeta.logicRules);
+        }
         setSelectedFieldId(result.fields[0].id);
         showToast(`✨ Document template recognized! Loaded 100% accurate saved schema.`);
       } else if (result.fields && result.fields.length > 0) {
@@ -339,14 +346,17 @@ export default function App() {
         name: formMeta.title || documentName.replace('.pdf', ''),
         description: formMeta.description || '',
         fields: fields,
-        formMeta: formMeta,
+        formMeta: {
+          ...formMeta,
+          logicRules: logicRules
+        },
         pageCount: totalPages || 1
       };
 
       await saveTemplate(payload);
       setIsTemplateMatch(true);
       setMatchedTemplateName(payload.name);
-      showToast(`✨ Template learned! Permanently saved ${fields.length} customized fields to SQLite.`);
+      showToast(`✨ Template learned! Permanently saved ${fields.length} customized fields and ${logicRules.length} logic rules to SQLite.`);
     } catch (err) {
       console.error('Template save error:', err);
       showToast(`⚠️ Could not save template: ${err.message}`);
@@ -638,6 +648,7 @@ export default function App() {
         formTitle={formMeta.title || "Assignment Submission Form"}
         formDescription={formMeta.description || "Collects student assignment details and answers for parallel computing coursework."}
         fields={fields}
+        logicRules={logicRules}
         documentName={documentName}
         documentId={documentId}
         pdfFile={pdfFile}
@@ -663,35 +674,57 @@ export default function App() {
         onSaveTemplate={handleSaveTemplate}
       />
 
-      {/* Main Split-Screen Workspace with Drag-and-Drop PDF Upload Support */}
-      <div 
-        ref={workspaceRef} 
-        onDragOver={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-        onDrop={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-            const dropped = e.dataTransfer.files[0];
-            if (dropped.name.toLowerCase().endsWith('.pdf') || dropped.type === 'application/pdf') {
-              handleUploadPdf(dropped);
-            } else {
-              showToast('Please drop a valid .pdf document.');
-            }
-          }
-        }}
-        className="flex-1 flex flex-row overflow-hidden relative"
-      >
-        {/* Far-Left Vertical Toolbox */}
-        <SidebarTools 
-          onAddField={handleAddField}
-          onSelectTool={() => {}}
+      {/* Workspace Area: Full-Width Logic Studio OR Split-Screen Designer */}
+      {activeTab === 'logics' ? (
+        <LogicBuilder
+          fields={fields}
+          logicRules={logicRules}
+          onAddRule={(newRule) => {
+            setLogicRules(prev => [...prev, newRule]);
+            showToast(`Added rule: "${newRule.name}"`);
+          }}
+          onUpdateRule={(updated) => {
+            setLogicRules(prev => prev.map(r => r.id === updated.id ? updated : r));
+            showToast(`Updated rule: "${updated.name}"`);
+          }}
+          onDeleteRule={(ruleId) => {
+            setLogicRules(prev => prev.filter(r => r.id !== ruleId));
+            showToast('Logic rule removed.');
+          }}
+          onToggleRule={(ruleId) => {
+            setLogicRules(prev => prev.map(r => r.id === ruleId ? { ...r, enabled: !r.enabled } : r));
+          }}
+          onNavigateToDesign={() => setActiveTab('design')}
+          onNavigateToPreview={() => setActiveTab('preview')}
         />
+      ) : (
+        <div 
+          ref={workspaceRef} 
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+              const dropped = e.dataTransfer.files[0];
+              if (dropped.name.toLowerCase().endsWith('.pdf') || dropped.type === 'application/pdf') {
+                handleUploadPdf(dropped);
+              } else {
+                showToast('Please drop a valid .pdf document.');
+              }
+            }
+          }}
+          className="flex-1 flex flex-row overflow-hidden relative"
+        >
+          {/* Far-Left Vertical Toolbox */}
+          <SidebarTools 
+            onAddField={handleAddField}
+            onSelectTool={() => {}}
+          />
 
-        {/* Center Workspace (Form Canvas or Logics View based on tab) */}
-        {activeTab === 'design' ? (
+          {/* Center Workspace (Form Canvas) */}
           <FormCanvas
             fields={fields}
             selectedFieldId={selectedFieldId}
@@ -716,28 +749,9 @@ export default function App() {
             isTemplateMatch={isTemplateMatch}
             onSaveTemplate={handleSaveTemplate}
             isSavingTemplate={isSavingTemplate}
+            logicRules={logicRules}
+            onNavigateToLogics={() => setActiveTab('logics')}
           />
-        ) : (
-          <div className="flex-1 bg-slate-50 overflow-y-auto p-8 flex flex-col items-center justify-center text-center">
-            <div className="max-w-md bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-              <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <GitBranch className="w-6 h-6" />
-              </div>
-              <h2 className="text-lg font-bold text-slate-900 mb-2">Form Logic Rules</h2>
-              <p className="text-sm text-slate-500 mb-6">
-                Configure conditional visibility, required branches, and dynamic PDF data bindings based on participant selections.
-              </p>
-              <button
-                type="button"
-                onClick={() => setActiveTab('design')}
-                className="inline-flex items-center gap-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition cursor-pointer"
-              >
-                <span>Return to Canvas Editor</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Dynamic SVG Connector Lines between Canvas and PDF Viewer (only shown on hover or select) */}
         <ConnectorLines
@@ -785,6 +799,7 @@ export default function App() {
           onUploadPdf={handleUploadPdf}
         />
       </div>
+      )}
 
       {/* Field Properties Settings Dialog (when UNPINNED as floating modal) */}
       {isPropertyPanelOpen && selectedField && activeTab === 'design' && !isPropertyPanelPinned && (
