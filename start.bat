@@ -1,5 +1,5 @@
 @echo off
-title PDF to Web Form (Frontend + Backend)
-echo Starting PDF to Web Form...
+title ConsularDoc (Frontend + Backend)
+echo Starting ConsularDoc...
 npm run dev
 pause

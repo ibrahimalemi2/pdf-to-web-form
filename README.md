@@ -1,6 +1,8 @@
-# PDF to Web Form
+# ConsularDoc
 
-Convert PDF documents into interactive, fillable web forms with AI-assisted field detection and PyMuPDF stamping.
+**ConsularDoc: Automated Interactive Web Form Generation and Coordinate-Accurate PDF Stamping for Diplomatic and Consular Services**
+
+Convert diplomatic, consular, and government PDF documents into interactive, fillable web forms with AI-assisted layout detection and coordinate-accurate PyMuPDF stamping.
 
 ## 🚀 Quick Start (Single Command)
 

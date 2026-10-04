@@ -888,9 +888,9 @@ export default function PreviewMode({
             <ChevronUp className="w-4 h-4" />
           </button>
 
-          {/* FormFlow Brand Badge */}
+          {/* ConsularDoc Brand Badge */}
           <div
-            title="FormFlow Engine"
+            title="ConsularDoc Engine"
             className="w-7 h-7 rounded-md bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center ml-1 shadow-xs cursor-pointer text-white"
           >
             <svg
@@ -1152,7 +1152,7 @@ export default function PreviewMode({
 
             {/* Footer Branding */}
             <footer className="text-center text-[11px] text-slate-400 py-3">
-              FormFlow AI • Turn any PDF into a responsive web form
+              ConsularDoc • Automated Interactive Web Form Generation & Coordinate-Accurate PDF Stamping
             </footer>
           </div>
         ) : (

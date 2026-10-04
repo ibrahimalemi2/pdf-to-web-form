@@ -28,8 +28,8 @@ from template_matcher import compute_document_fingerprint
 init_db()
 
 app = FastAPI(
-    title="PDF to Web Form Backend",
-    description="FastAPI + PyMuPDF engine for parsing PDFs, extracting text blocks, template fingerprinting, and SQLite memory.",
+    title="ConsularDoc Backend API",
+    description="Automated Interactive Web Form Generation and Coordinate-Accurate PDF Stamping for Diplomatic and Consular Services",
     version="2.0.0",
 )
 

@@ -28,7 +28,7 @@ const backendScript = path.join(projectRoot, 'backend', 'main.py');
 const viteBin = path.join(projectRoot, 'node_modules', 'vite', 'bin', 'vite.js');
 
 console.log('\x1b[1m\x1b[32m%s\x1b[0m', '════════════════════════════════════════════════════════════════════');
-console.log('\x1b[1m\x1b[36m%s\x1b[0m', '  🚀 Starting PDF to Web Form (Frontend + Backend)...');
+console.log('\x1b[1m\x1b[36m%s\x1b[0m', '  🚀 Starting ConsularDoc (Frontend + Backend)...');
 console.log('\x1b[90m%s\x1b[0m', `  Python interpreter: ${pythonCmd}`);
 console.log('\x1b[90m%s\x1b[0m', `  Frontend: Vite (React)`);
 console.log('\x1b[90m%s\x1b[0m', `  Backend:  FastAPI + PyMuPDF (Port 8000)`);

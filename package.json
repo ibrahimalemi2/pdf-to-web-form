@@ -1,5 +1,6 @@
 {
   "name": "pdf-to-web-form",
+  "description": "ConsularDoc: Automated Interactive Web Form Generation and Coordinate-Accurate PDF Stamping for Diplomatic and Consular Services",
   "private": true,
   "version": "0.0.0",
   "type": "module",

@@ -51,7 +51,7 @@ export default function Navbar({
         <button 
           type="button"
           onClick={onBack}
-          title="Back to FormFlow Home" 
+          title="Back to ConsularDoc Home" 
           className="flex items-center gap-2 text-slate-700 hover:text-blue-600 hover:bg-slate-100 px-2 py-1.5 rounded-lg transition-colors text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer"
         >
           <div className="w-6 h-6 rounded-md bg-gradient-to-tr from-blue-600 via-indigo-600 to-indigo-700 flex items-center justify-center text-white shadow-2xs">
@@ -61,7 +61,7 @@ export default function Navbar({
               <path d="M4 19h7" />
             </svg>
           </div>
-          <span className="font-bold tracking-tight">Form<span className="text-blue-600">Flow</span></span>
+          <span className="font-bold tracking-tight">Consular<span className="text-blue-600">Doc</span></span>
         </button>
 
         <div className="h-4 w-px bg-slate-200" />
@@ -173,16 +173,6 @@ export default function Navbar({
             <BookmarkCheck className="w-3.5 h-3.5 text-blue-600" />
           )}
           <span>Save Template</span>
-        </button>
-
-        <button 
-          type="button"
-          onClick={() => onTabChange("preview")}
-          title="Live Form Preview"
-          className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer active:scale-95"
-        >
-          <Eye className="w-3.5 h-3.5 text-blue-600" />
-          <span>Preview</span>
         </button>
 
         <button
