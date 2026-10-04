@@ -1107,7 +1107,7 @@ export default function FormCanvas({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onNavigateToLogics?.();
+                              onNavigateToLogics?.(field.id);
                             }}
                             title={`Conditional logic active (${fieldRules.length} rule${fieldRules.length > 1 ? 's' : ''}). Click to configure in Logic Studio.`}
                             className="inline-flex items-center gap-1 ml-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/90 transition-all cursor-pointer shadow-2xs"

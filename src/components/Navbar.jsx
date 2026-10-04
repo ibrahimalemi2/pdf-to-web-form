@@ -23,7 +23,10 @@ export default function Navbar({
   isTemplateMatch = false,
   matchedTemplateName = "",
   isSavingTemplate = false,
-  onSaveTemplate = () => {}
+  onSaveTemplate = () => {},
+  isLogicDrawerOpen = false,
+  logicCount = 0,
+  onToggleLogicDrawer = null
 }) {
   const fileInputRef = React.useRef(null);
 
@@ -71,7 +74,7 @@ export default function Navbar({
           <button
             onClick={() => onTabChange("design")}
             className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-              activeTab === "design"
+              activeTab === "design" && !isLogicDrawerOpen
                 ? "bg-white text-slate-900 shadow-xs"
                 : "text-slate-600 hover:text-slate-900"
             }`}
@@ -93,15 +96,27 @@ export default function Navbar({
           </button>
 
           <button
-            onClick={() => onTabChange("logics")}
+            onClick={() => {
+              if (onToggleLogicDrawer) {
+                onToggleLogicDrawer();
+              } else {
+                onTabChange("logics");
+              }
+            }}
+            title="Open Slide-Over Form Logic Drawer"
             className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-              activeTab === "logics"
-                ? "bg-white text-slate-900 shadow-xs"
+              isLogicDrawerOpen || activeTab === "logics"
+                ? "bg-white text-indigo-700 shadow-xs ring-1 ring-indigo-500/20 font-bold"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
             <GitBranch className="w-3.5 h-3.5 text-indigo-500" />
             <span>Logics</span>
+            {logicCount > 0 && (
+              <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700">
+                {logicCount}
+              </span>
+            )}
           </button>
         </nav>
       </div>

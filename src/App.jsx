@@ -7,7 +7,7 @@ import FieldPropertiesPanel from './components/FieldPropertiesPanel';
 import UploadView from './components/UploadView';
 import ConnectorLines from './components/ConnectorLines';
 import PreviewMode from './components/PreviewMode';
-import LogicBuilder from './components/LogicBuilder';
+import LogicDrawer from './components/LogicDrawer';
 import { CheckCircle2 } from 'lucide-react';
 import { INITIAL_FIELDS } from './constants/formFields';
 import { loadPdfDocument, extractClientFieldsFromPdf } from './utils/pdfRenderer';
@@ -48,6 +48,28 @@ export default function App() {
 
   // Dynamic Form Logic Rules
   const [logicRules, setLogicRules] = useState([]);
+  const [isLogicDrawerOpen, setIsLogicDrawerOpen] = useState(false);
+  const [logicFilterFieldId, setLogicFilterFieldId] = useState(null);
+
+  const handleOpenLogicDrawer = (fieldId = null) => {
+    setLogicFilterFieldId(fieldId || null);
+    setIsLogicDrawerOpen(true);
+  };
+
+  const handleToggleLogicDrawer = () => {
+    setIsLogicDrawerOpen(prev => {
+      if (prev) {
+        setLogicFilterFieldId(null);
+        return false;
+      }
+      return true;
+    });
+  };
+
+  const handleCloseLogicDrawer = () => {
+    setIsLogicDrawerOpen(false);
+    setLogicFilterFieldId(null);
+  };
 
   // Template memory & fingerprint state
   const [currentFingerprint, setCurrentFingerprint] = useState(null);
@@ -664,7 +686,17 @@ export default function App() {
       <Navbar
         documentName={documentName}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tab) => {
+          if (tab === 'logics') {
+            handleToggleLogicDrawer();
+          } else {
+            setActiveTab(tab);
+            if (isLogicDrawerOpen) setIsLogicDrawerOpen(false);
+          }
+        }}
+        isLogicDrawerOpen={isLogicDrawerOpen}
+        logicCount={logicRules.filter(r => r.enabled !== false).length}
+        onToggleLogicDrawer={handleToggleLogicDrawer}
         onPublish={handlePublish}
         onUploadPdf={handleUploadPdf}
         onBack={() => setCurrentView('upload')}
@@ -674,32 +706,9 @@ export default function App() {
         onSaveTemplate={handleSaveTemplate}
       />
 
-      {/* Workspace Area: Full-Width Logic Studio OR Split-Screen Designer */}
-      {activeTab === 'logics' ? (
-        <LogicBuilder
-          fields={fields}
-          logicRules={logicRules}
-          onAddRule={(newRule) => {
-            setLogicRules(prev => [...prev, newRule]);
-            showToast(`Added rule: "${newRule.name}"`);
-          }}
-          onUpdateRule={(updated) => {
-            setLogicRules(prev => prev.map(r => r.id === updated.id ? updated : r));
-            showToast(`Updated rule: "${updated.name}"`);
-          }}
-          onDeleteRule={(ruleId) => {
-            setLogicRules(prev => prev.filter(r => r.id !== ruleId));
-            showToast('Logic rule removed.');
-          }}
-          onToggleRule={(ruleId) => {
-            setLogicRules(prev => prev.map(r => r.id === ruleId ? { ...r, enabled: !r.enabled } : r));
-          }}
-          onNavigateToDesign={() => setActiveTab('design')}
-          onNavigateToPreview={() => setActiveTab('preview')}
-        />
-      ) : (
-        <div 
-          ref={workspaceRef} 
+      {/* Main Workspace: Always visible with Slide-Over Logic Drawer */}
+      <div 
+        ref={workspaceRef} 
           onDragOver={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -750,7 +759,7 @@ export default function App() {
             onSaveTemplate={handleSaveTemplate}
             isSavingTemplate={isSavingTemplate}
             logicRules={logicRules}
-            onNavigateToLogics={() => setActiveTab('logics')}
+            onNavigateToLogics={(fieldId) => handleOpenLogicDrawer(fieldId)}
           />
 
         {/* Dynamic SVG Connector Lines between Canvas and PDF Viewer (only shown on hover or select) */}
@@ -772,7 +781,7 @@ export default function App() {
             onClose={() => setIsPropertyPanelOpen(false)}
             isPinned={true}
             onTogglePin={() => setIsPropertyPanelPinned(false)}
-            onNavigateToLogics={() => setActiveTab('logics')}
+            onNavigateToLogics={(fieldId) => handleOpenLogicDrawer(fieldId)}
             fieldIndex={fields.findIndex(f => f.id === selectedField.id) + 1}
           />
         )}
@@ -798,8 +807,33 @@ export default function App() {
           detectedCount={detectedBackendFields.length}
           onUploadPdf={handleUploadPdf}
         />
+
+        {/* Option 3: Slide-Over Logic Drawer (Inside Design Canvas) */}
+        <LogicDrawer
+          isOpen={isLogicDrawerOpen}
+          onClose={handleCloseLogicDrawer}
+          fields={fields}
+          logicRules={logicRules}
+          onAddRule={(newRule) => {
+            setLogicRules(prev => [...prev, newRule]);
+            showToast(`Added rule: "${newRule.name}"`);
+          }}
+          onUpdateRule={(updated) => {
+            setLogicRules(prev => prev.map(r => r.id === updated.id ? updated : r));
+            showToast(`Updated rule: "${updated.name}"`);
+          }}
+          onDeleteRule={(ruleId) => {
+            setLogicRules(prev => prev.filter(r => r.id !== ruleId));
+            showToast('Logic rule removed.');
+          }}
+          onToggleRule={(ruleId) => {
+            setLogicRules(prev => prev.map(r => r.id === ruleId ? { ...r, enabled: !r.enabled } : r));
+          }}
+          filterFieldId={logicFilterFieldId}
+          onClearFilter={() => setLogicFilterFieldId(null)}
+          onSelectFilterField={(id) => setLogicFilterFieldId(id)}
+        />
       </div>
-      )}
 
       {/* Field Properties Settings Dialog (when UNPINNED as floating modal) */}
       {isPropertyPanelOpen && selectedField && activeTab === 'design' && !isPropertyPanelPinned && (
@@ -810,7 +844,7 @@ export default function App() {
           onClose={() => setIsPropertyPanelOpen(false)}
           isPinned={false}
           onTogglePin={() => setIsPropertyPanelPinned(true)}
-          onNavigateToLogics={() => setActiveTab('logics')}
+          onNavigateToLogics={(fieldId) => handleOpenLogicDrawer(fieldId)}
           fieldIndex={fields.findIndex(f => f.id === selectedField.id) + 1}
         />
       )}

@@ -167,7 +167,7 @@ export default function FieldPropertiesPanel({
           {/* Logics Button */}
           <button
             type="button"
-            onClick={onNavigateToLogics}
+            onClick={() => onNavigateToLogics?.(field.id)}
             title="Configure Field Logic Rules"
             className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-slate-100 transition cursor-pointer"
           >
