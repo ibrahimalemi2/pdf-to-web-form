@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { downloadFilledPdf } from '../services/api';
 import { computeDynamicFieldStates } from '../utils/logicEngine';
+import SignaturePadModal from './SignaturePadModal';
 
 export default function PreviewMode({
   formTitle = "Assignment Submission Form",
@@ -52,6 +53,7 @@ export default function PreviewMode({
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [activeSigningField, setActiveSigningField] = useState(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
   // Reactive dynamic states computed from active logic rules and current user responses
@@ -74,7 +76,7 @@ export default function PreviewMode({
     fields.forEach((f) => {
       const isHidden = dynamicStates[f.id]?.hidden ?? f.hidden;
 
-      if (f.type === 'Page Break' || f.type === 'Section' || f.type === 'Divider') {
+      if (f.type === 'Page Break') {
         if (!currentHidden) {
           rawList.push({
             title: currentTitle,
@@ -276,7 +278,7 @@ export default function PreviewMode({
     currentFields.forEach(f => {
       const isHidden = dynamicStates[f.id]?.hidden ?? f.hidden;
       const isRequired = dynamicStates[f.id]?.required ?? f.required;
-      if (isHidden || f.type === 'Header' || f.type === 'Section' || f.type === 'Divider') return;
+      if (isHidden || f.type === 'Header' || f.type === 'Section' || f.type === 'Section Break' || f.type === 'Page Break' || f.type === 'Divider') return;
       if (isRequired) {
         const val = formData[f.id];
         if (f.type === 'Checkbox') {
@@ -310,7 +312,7 @@ export default function PreviewMode({
       stepItem.fields.forEach(f => {
         const isHidden = dynamicStates[f.id]?.hidden ?? f.hidden;
         const isRequired = dynamicStates[f.id]?.required ?? f.required;
-        if (isHidden || f.type === 'Header' || f.type === 'Section' || f.type === 'Divider') return;
+        if (isHidden || f.type === 'Header' || f.type === 'Section' || f.type === 'Section Break' || f.type === 'Page Break' || f.type === 'Divider') return;
         if (isRequired) {
           const val = formData[f.id];
           if (f.type === 'Checkbox') {
@@ -384,7 +386,7 @@ export default function PreviewMode({
 
   // Filter interactive fields for Conversational mode (excluding headers, dividers, and conditionally hidden fields)
   const interactiveFields = fields.filter(
-    f => f.type !== 'Header' && f.type !== 'Section' && f.type !== 'Divider' && !(dynamicStates[f.id]?.hidden ?? f.hidden)
+    f => f.type !== 'Header' && f.type !== 'Section' && f.type !== 'Section Break' && f.type !== 'Page Break' && f.type !== 'Divider' && !(dynamicStates[f.id]?.hidden ?? f.hidden)
   );
 
   const currentConversationalField = interactiveFields[currentStepIndex] || interactiveFields[0];
@@ -566,22 +568,99 @@ export default function PreviewMode({
         );
       }
 
-      case 'Signature':
+      case 'Signature': {
+        const isSigned = Boolean(val && typeof val === 'string' && val.trim().length > 0);
+        const isImageDataUrl = isSigned && val.startsWith('data:image/');
+
         return (
-          <div
-            onClick={() => handleInputChange(field.id, val ? '' : 'Verified Signature [Signed Digitally]')}
-            className={`border border-dashed rounded-lg p-3.5 flex flex-col items-center justify-center gap-1 cursor-pointer transition ${
-              val
-                ? 'border-emerald-500 bg-emerald-50/40 text-emerald-800'
-                : 'border-slate-300 hover:border-blue-500 bg-slate-50/50 text-slate-500'
-            }`}
-          >
-            <PenTool className={`w-4 h-4 ${val ? 'text-emerald-600' : 'text-slate-400'}`} />
-            <span className="text-xs font-semibold">
-              {val ? `Signed: ${val}` : 'Click to place digital signature'}
-            </span>
+          <div className="space-y-2">
+            <div
+              onClick={() => setActiveSigningField(field)}
+              className={`border-2 rounded-xl p-4 transition cursor-pointer select-none ${
+                isSigned
+                  ? 'border-emerald-500 bg-emerald-50/25 hover:border-emerald-600 shadow-2xs'
+                  : 'border-dashed border-slate-300 hover:border-blue-500 bg-slate-50/60 hover:bg-blue-50/10'
+              }`}
+            >
+              {isSigned ? (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-900">Electronically Signed</span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold">
+                          Verified
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Digital signature recorded & prepared for official PDF stamping
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Render signature image or cursive typed text */}
+                  <div className="bg-white border border-slate-200 rounded-lg px-4 py-2 flex items-center justify-center min-w-[150px] max-w-[240px] h-14 shadow-2xs">
+                    {isImageDataUrl ? (
+                      <img src={val} alt="Applicant Signature" className="max-h-11 object-contain" />
+                    ) : (
+                      <span style={{ fontFamily: "'Dancing Script', 'Caveat', cursive", color: field.inkColor || '#000000' }} className="text-xl select-none truncate">
+                        {val}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-4 text-center gap-1.5">
+                  <div className="w-9 h-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-0.5">
+                    <PenTool className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-800">
+                    Click to sign this document
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    Draw signature with mouse, type handwriting, or upload signature image
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Actions & Consent Notice */}
+            <div className="flex items-center justify-between text-[11px] text-slate-400">
+              <span className="truncate max-w-sm sm:max-w-md">
+                {field.consentNotice || 'Electronic signature complies with standard digital agreement acts.'}
+              </span>
+              {isSigned && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveSigningField(field);
+                    }}
+                    className="text-blue-600 hover:underline font-semibold cursor-pointer"
+                  >
+                    Change
+                  </button>
+                  <span className="text-slate-300">•</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleInputChange(field.id, '');
+                    }}
+                    className="text-red-500 hover:underline font-medium cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         );
+      }
 
       case 'File Upload':
         return (
@@ -742,22 +821,65 @@ export default function PreviewMode({
           </div>
         );
 
-      case 'Signature':
+      case 'Signature': {
+        const isSigned = Boolean(val && typeof val === 'string' && val.trim().length > 0);
+        const isImageDataUrl = isSigned && val.startsWith('data:image/');
+
         return (
-          <div
-            onClick={() => handleInputChange(field.id, val ? '' : 'Evelyn Martinez [Signed Digitally]')}
-            className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer transition max-w-md ${
-              val
-                ? 'border-emerald-500 bg-emerald-50/50 text-emerald-800'
-                : 'border-slate-300 hover:border-blue-500 bg-slate-50 text-slate-600'
-            }`}
-          >
-            <PenTool className={`w-6 h-6 ${val ? 'text-emerald-600' : 'text-slate-400'}`} />
-            <span className="text-sm font-bold">
-              {val ? `Verified Signature: ${val}` : 'Click to Sign Digitally'}
-            </span>
+          <div className="space-y-4 max-w-md">
+            <div
+              onClick={() => setActiveSigningField(field)}
+              className={`border-2 rounded-2xl p-6 transition cursor-pointer select-none text-center ${
+                isSigned
+                  ? 'border-emerald-500 bg-emerald-50/30'
+                  : 'border-dashed border-slate-300 hover:border-blue-500 bg-slate-50/60'
+              }`}
+            >
+              {isSigned ? (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <span className="text-xs font-bold text-emerald-800">Electronic Signature Verified</span>
+                  <div className="bg-white border border-slate-200 rounded-xl p-3 w-full flex items-center justify-center h-20 shadow-xs">
+                    {isImageDataUrl ? (
+                      <img src={val} alt="Signature" className="max-h-16 object-contain" />
+                    ) : (
+                      <span style={{ fontFamily: "'Dancing Script', 'Caveat', cursive" }} className="text-2xl text-slate-900">
+                        {val}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveSigningField(field);
+                    }}
+                    className="text-xs font-semibold text-blue-600 hover:underline cursor-pointer"
+                  >
+                    Change Signature
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <PenTool className="w-6 h-6" />
+                  </div>
+                  <span className="text-sm font-bold text-slate-900">Click to Adopt and Sign</span>
+                  <span className="text-xs text-slate-400">Draw, Type or Upload</span>
+                </div>
+              )}
+            </div>
+
+            {field.consentNotice && (
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                {field.consentNotice}
+              </p>
+            )}
           </div>
         );
+      }
 
       case 'File Upload':
         return (
@@ -1086,8 +1208,30 @@ export default function PreviewMode({
                         );
                       }
 
-                      if (field.type === 'Section' || field.type === 'Divider') {
-                        return null;
+                      if (field.type === 'Section Break' || field.type === 'Section') {
+                        if (field.isInvisibleLogic || (dynamicStates[field.id]?.hidden ?? field.hidden)) return null;
+                        return (
+                          <div key={field.id} className="sm:col-span-2 pt-4 pb-2" style={{ textAlign: field.align || 'left' }}>
+                            <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                              {field.title || field.label || 'Title'}
+                            </h3>
+                            {(field.helperText || field.description) && (
+                              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                                {field.helperText || field.description}
+                              </p>
+                            )}
+                            <hr className="border-slate-200 mt-3" />
+                          </div>
+                        );
+                      }
+
+                      if (field.type === 'Divider') {
+                        if (dynamicStates[field.id]?.hidden ?? field.hidden) return null;
+                        return (
+                          <div key={field.id} className="sm:col-span-2 py-2">
+                            <hr className="border-slate-200" />
+                          </div>
+                        );
                       }
 
                       const cleanLbl = getCleanLabel(field.label);
@@ -1389,6 +1533,20 @@ export default function PreviewMode({
           <span>{toastMessage}</span>
         </div>
       )}
+
+      {/* Signature Pad Modal for live capture */}
+      <SignaturePadModal
+        isOpen={Boolean(activeSigningField)}
+        field={activeSigningField || {}}
+        initialValue={activeSigningField ? formData[activeSigningField.id] : null}
+        onClose={() => setActiveSigningField(null)}
+        onSave={(sigDataUrl) => {
+          if (activeSigningField) {
+            handleInputChange(activeSigningField.id, sigDataUrl);
+          }
+          setActiveSigningField(null);
+        }}
+      />
     </div>
   );
 }

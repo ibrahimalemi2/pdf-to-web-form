@@ -11,6 +11,29 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 
+// Exact match PlatoForms Section Break icon: top bar + 2 split boxes beneath it
+export function SectionBreakIcon({ className = "w-5 h-5", ...props }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      {/* Top horizontal rounded bar */}
+      <rect x="4" y="5" width="16" height="3.5" rx="1.5" />
+      {/* Bottom left rounded box */}
+      <rect x="4" y="12.5" width="7" height="6.5" rx="1.5" />
+      {/* Bottom right rounded box */}
+      <rect x="13" y="12.5" width="7" height="6.5" rx="1.5" />
+    </svg>
+  );
+}
+
 // Exact match PlatoForms Page Break icon: ][ with horizontal divider
 export function PageBreakIcon({ className = "w-5 h-5", ...props }) {
   return (
@@ -78,10 +101,10 @@ const TOOLS = [
     icon: Type
   },
   {
-    id: 'separator',
-    label: 'Divider Line',
-    type: 'Divider',
-    icon: SeparatorHorizontal
+    id: 'section-break',
+    label: 'Section Break',
+    type: 'Section Break',
+    icon: SectionBreakIcon
   },
   {
     id: 'page-break',

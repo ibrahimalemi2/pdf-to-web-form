@@ -38,7 +38,8 @@ import {
   GitBranch,
   X
 } from 'lucide-react';
-import { PageBreakIcon } from './SidebarTools';
+import { PageBreakIcon, SectionBreakIcon } from './SidebarTools';
+import SignaturePadModal from './SignaturePadModal';
 
 // Component metadata with rich titles, descriptions, and color tokens for hover identification
 const FIELD_TYPE_INFO = {
@@ -106,18 +107,26 @@ const FIELD_TYPE_INFO = {
     badgeClass: 'text-cyan-700 bg-cyan-50/90 border-cyan-200/80',
     iconColor: 'text-cyan-600'
   },
+  'Section Break': {
+    label: 'Section Break',
+    shortName: 'Section',
+    desc: 'Section break: groups fields into sections with section title and divider',
+    icon: SectionBreakIcon,
+    badgeClass: 'text-blue-700 bg-blue-50 border-blue-200',
+    iconColor: 'text-[#1877f2]'
+  },
   'Section': {
-    label: 'Divider Line (Page Break)',
-    shortName: 'Divider Line',
-    desc: 'Page break: divides the form into steps with a Next button in preview',
-    icon: SeparatorHorizontal,
-    badgeClass: 'text-indigo-700 bg-indigo-50 border-indigo-200',
-    iconColor: 'text-indigo-600'
+    label: 'Section Break',
+    shortName: 'Section',
+    desc: 'Section break: groups fields into sections with section title and divider',
+    icon: SectionBreakIcon,
+    badgeClass: 'text-blue-700 bg-blue-50 border-blue-200',
+    iconColor: 'text-[#1877f2]'
   },
   'Divider': {
-    label: 'Divider Line (Page Break)',
+    label: 'Divider Line',
     shortName: 'Divider Line',
-    desc: 'Page break: divides the form into steps with a Next button in preview',
+    desc: 'Visual divider line between fields',
     icon: SeparatorHorizontal,
     badgeClass: 'text-indigo-700 bg-indigo-50 border-indigo-200',
     iconColor: 'text-indigo-600'
@@ -171,12 +180,12 @@ export default function FormCanvas({
     setTitleDraft(formTitle);
   }, [formTitle]);
 
-  // Map each field to its step number based on preceding divider lines
+  // Map each field to its step number based on preceding page breaks
   const fieldStepNumbers = React.useMemo(() => {
     const map = {};
     let currentStep = 1;
     fields.forEach((f) => {
-      if (f.type === 'Page Break' || f.type === 'Section' || f.type === 'Divider') {
+      if (f.type === 'Page Break') {
         currentStep++;
         map[f.id] = currentStep;
       } else {
@@ -210,7 +219,7 @@ export default function FormCanvas({
 
     let currIdx = 0;
     fields.forEach((f) => {
-      if (f.type === 'Page Break' || f.type === 'Section' || f.type === 'Divider') {
+      if (f.type === 'Page Break') {
         currIdx++;
         list.push({
           id: f.id,
@@ -631,9 +640,48 @@ export default function FormCanvas({
 
       case 'Signature':
         return (
-          <div className="border border-dashed border-slate-300 bg-slate-50/70 rounded-lg p-3 flex flex-col items-center justify-center gap-1 text-slate-400 hover:bg-slate-50 transition">
-            <PenTool className="w-4 h-4 text-slate-400" />
-            <span className="text-[11px] font-medium">Click to draw or type electronic signature</span>
+          <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+            <div className="border-b border-slate-100 bg-slate-50/60 px-3 py-1.5 flex items-center justify-between text-[11px] text-slate-500">
+              <div className="flex items-center gap-3">
+                <span className="font-semibold text-slate-700">Signature Capture</span>
+                <span className="text-slate-300">•</span>
+                <div className="flex items-center gap-1.5 text-[10px]">
+                  {(field.signMethodDraw ?? true) && <span className="px-1.5 py-0.5 rounded bg-white border border-slate-200">Draw</span>}
+                  {(field.signMethodType ?? true) && <span className="px-1.5 py-0.5 rounded bg-white border border-slate-200">Type</span>}
+                  {(field.signMethodUpload ?? true) && <span className="px-1.5 py-0.5 rounded bg-white border border-slate-200">Upload</span>}
+                </div>
+              </div>
+              <span className="text-[10px] text-slate-400 font-mono">
+                {field.padWidth || 580} × {field.padHeight || 300}
+              </span>
+            </div>
+
+            <div className="p-4 bg-slate-50/30 flex flex-col items-center justify-center min-h-[90px]">
+              {field.value && typeof field.value === 'string' && field.value.startsWith('data:image/') ? (
+                <div className="relative group/sig flex flex-col items-center">
+                  <img src={field.value} alt="Signature" className="max-h-20 object-contain drop-shadow-xs" />
+                  <span className="text-[10px] text-emerald-600 font-medium mt-1">✓ Electronically Signed</span>
+                </div>
+              ) : field.value ? (
+                <div style={{ fontFamily: "'Dancing Script', 'Caveat', cursive", color: field.inkColor || '#000000' }} className="text-2xl select-none">
+                  {field.value}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-1.5 text-slate-400">
+                  <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <PenTool className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-medium text-slate-600">Electronic Signature Pad</span>
+                  <span className="text-[10px] text-slate-400">Click to configure pad settings & live preview</span>
+                </div>
+              )}
+            </div>
+
+            {field.consentNotice && (
+              <div className="px-3 py-1.5 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-400 truncate">
+                {field.consentNotice}
+              </div>
+            )}
           </div>
         );
 
@@ -684,9 +732,11 @@ export default function FormCanvas({
   const renderFieldItem = (field, index) => {
     const isSelected = selectedFieldId === field.id;
     const isEditingThisLabel = editingLabelId === field.id;
+    const isSection = field.type === 'Section Break' || field.type === 'Section';
+    const effectiveSectionNum = field.sectionNumber || (typeof field.id === 'string' && field.id.replace(/[^0-9]/g, '').slice(-2)) || (index + 1) || 67;
     const isFullWidth = field.columnSpan === 2 ||
+      isSection ||
       field.type === 'Long Text' ||
-      field.type === 'Section' ||
       field.type === 'Header' ||
       field.type === 'File Upload';
 
@@ -862,134 +912,164 @@ export default function FormCanvas({
           </button>
         </div>
 
-        {/* Card Header matching PlatoForms screenshot */}
-        <div className="flex items-center justify-between mb-2 select-none">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            {/* Drag Handle */}
-            <div
-              title="Drag box anywhere on canvas"
-              className="cursor-grab active:cursor-grabbing p-1 -ml-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition-colors"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <GripVertical className="w-3.5 h-3.5" />
-            </div>
-
-            {/* Editable Label */}
-            {isEditingThisLabel ? (
-              <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
-                <input
-                  type="text"
-                  value={labelDraft}
-                  onChange={(e) => setLabelDraft(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && saveLabelEdit(field.id)}
-                  autoFocus
-                  className="text-xs font-semibold text-slate-800 border-b border-blue-500 bg-white px-1.5 py-0.5 rounded focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => saveLabelEdit(field.id)}
-                  className="text-blue-600 hover:text-blue-800 p-0.5 cursor-pointer"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ) : (
-              <div
-                onClick={(e) => startLabelEdit(field, e)}
-                title="Double click to edit label"
-                className="flex items-center gap-1.5 cursor-text group/label truncate max-w-[200px] sm:max-w-[260px]"
-              >
-                <span className="text-xs font-semibold text-slate-700 hover:text-blue-600 transition-colors truncate">
-                  {field.label}
-                </span>
-                <Edit2 className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover/label:opacity-100 transition-opacity shrink-0" />
-                {field.required && (
-                  <span className="text-red-500 font-bold text-xs shrink-0">*</span>
-                )}
-              </div>
+        {isSection ? (
+          /* Exact Match PlatoForms Section Break Card (Screenshot 2) */
+          <div className="select-none py-1.5 px-0.5" style={{ textAlign: field.align || 'left' }}>
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+              {field.title || field.label || 'Title'}
+            </h3>
+            {(field.helperText || field.description || (!field.title && !field.label)) && (
+              <p className="text-xs text-slate-400 mt-0.5">
+                {field.helperText || field.description || 'Help text'}
+              </p>
             )}
-          </div>
-
-          {/* Right badge: Type Icon + Type dropdown selector */}
-          <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setOpenTypeChooserId(openTypeChooserId === field.id ? null : field.id)}
-                title="Switch component type"
-                className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md border transition cursor-pointer ${typeInfo.badgeClass} hover:brightness-95`}
-              >
-                <TypeIcon className="w-3.5 h-3.5 shrink-0" />
-                <span className="hidden sm:inline">{typeInfo.shortName}</span>
-                <ChevronDown className="w-2.5 h-2.5 opacity-60 ml-0.5" />
-              </button>
-
-              {openTypeChooserId === field.id && (
-                <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-50 text-xs">
-                  <div className="px-3 py-1 font-bold text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                    Switch Component Type
-                  </div>
-                  {['Short Text', 'Long Text', 'Dropdown', 'Date', 'Checkbox', 'Signature', 'File Upload'].map(tKey => {
-                    const info = FIELD_TYPE_INFO[tKey];
-                    const TIcon = info.icon;
-                    return (
-                      <button
-                        key={tKey}
-                        type="button"
-                        onClick={() => handleChangeFieldType(field.id, tKey)}
-                        className={`w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center gap-2 cursor-pointer ${
-                          field.type === tKey ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-700'
-                        }`}
-                      >
-                        <TIcon className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{info.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+            {!field.isInvisibleLogic && (
+              <hr className="border-slate-200 my-3" />
+            )}
+            <div className="flex items-center gap-1.5 text-xs text-blue-600 font-medium mt-3">
+              <SectionBreakIcon className="w-4 h-4 text-[#1877f2]" />
+              <span className="text-slate-700 font-semibold">
+                Section #{effectiveSectionNum}
+              </span>
+              {field.isInvisibleLogic && (
+                <span className="text-[10px] text-slate-400 font-normal italic ml-1">
+                  (Invisible for Logic)
+                </span>
               )}
             </div>
+          </div>
+        ) : (
+          <>
+            {/* Card Header matching PlatoForms screenshot */}
+            <div className="flex items-center justify-between mb-2 select-none">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                {/* Drag Handle */}
+                <div
+                  title="Drag box anywhere on canvas"
+                  className="cursor-grab active:cursor-grabbing p-1 -ml-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <GripVertical className="w-3.5 h-3.5" />
+                </div>
 
-            {/* PDF Page Sync Link indicator */}
-            <div
-              title={`Dynamic sync enabled: bound to PDF Page ${field.pdfMapping?.page || 1}`}
-              className="hidden sm:flex items-center gap-1 text-[10px] font-mono font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/60"
-            >
-              <Link2 className="w-2.5 h-2.5" />
-              <span>PDF P{field.pdfMapping?.page || 1}</span>
+                {/* Editable Label */}
+                {isEditingThisLabel ? (
+                  <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="text"
+                      value={labelDraft}
+                      onChange={(e) => setLabelDraft(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && saveLabelEdit(field.id)}
+                      autoFocus
+                      className="text-xs font-semibold text-slate-800 border-b border-blue-500 bg-white px-1.5 py-0.5 rounded focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => saveLabelEdit(field.id)}
+                      className="text-blue-600 hover:text-blue-800 p-0.5 cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={(e) => startLabelEdit(field, e)}
+                    title="Double click to edit label"
+                    className="flex items-center gap-1.5 cursor-text group/label truncate max-w-[200px] sm:max-w-[260px]"
+                  >
+                    <span className="text-xs font-semibold text-slate-700 hover:text-blue-600 transition-colors truncate">
+                      {field.label}
+                    </span>
+                    <Edit2 className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover/label:opacity-100 transition-opacity shrink-0" />
+                    {field.required && (
+                      <span className="text-red-500 font-bold text-xs shrink-0">*</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Right badge: Type Icon + Type dropdown selector */}
+              <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setOpenTypeChooserId(openTypeChooserId === field.id ? null : field.id)}
+                    title="Switch component type"
+                    className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md border transition cursor-pointer ${typeInfo.badgeClass} hover:brightness-95`}
+                  >
+                    <TypeIcon className="w-3.5 h-3.5 shrink-0" />
+                    <span className="hidden sm:inline">{typeInfo.shortName}</span>
+                    <ChevronDown className="w-2.5 h-2.5 opacity-60 ml-0.5" />
+                  </button>
+
+                  {openTypeChooserId === field.id && (
+                    <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-50 text-xs">
+                      <div className="px-3 py-1 font-bold text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                        Switch Component Type
+                      </div>
+                      {['Short Text', 'Long Text', 'Dropdown', 'Date', 'Checkbox', 'Signature', 'File Upload'].map(tKey => {
+                        const info = FIELD_TYPE_INFO[tKey];
+                        const TIcon = info.icon;
+                        return (
+                          <button
+                            key={tKey}
+                            type="button"
+                            onClick={() => handleChangeFieldType(field.id, tKey)}
+                            className={`w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center gap-2 cursor-pointer ${
+                              field.type === tKey ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-700'
+                            }`}
+                          >
+                            <TIcon className="w-3.5 h-3.5 text-slate-400" />
+                            <span>{info.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* PDF Page Sync Link indicator */}
+                <div
+                  title={`Dynamic sync enabled: bound to PDF Page ${field.pdfMapping?.page || 1}`}
+                  className="hidden sm:flex items-center gap-1 text-[10px] font-mono font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/60"
+                >
+                  <Link2 className="w-2.5 h-2.5" />
+                  <span>PDF P{field.pdfMapping?.page || 1}</span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteField(field.id);
+                  }}
+                  title="Delete Field"
+                  className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-0.5 rounded transition cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDeleteField(field.id);
-              }}
-              title="Delete Field"
-              className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-0.5 rounded transition cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
+            {/* Input Preview Body */}
+            {renderFieldInputPreview(field)}
 
-        {/* Input Preview Body */}
-        {renderFieldInputPreview(field)}
-
-        {/* Helper text / Status Badges */}
-        <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-100 pt-1.5">
-          <span className="truncate max-w-[200px]" title={typeInfo.label}>
-            {field.helperText || typeInfo.label}
-          </span>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[10px] font-mono text-slate-400">
-              #{index + 1}
-            </span>
-            {field.required && <span className="text-amber-600 font-semibold text-[10px]">Required</span>}
-            {field.readOnly && <span className="text-blue-600 font-semibold text-[10px]">Locked</span>}
-            {field.hidden && <span className="text-rose-500 font-semibold text-[10px]">Hidden</span>}
-          </div>
-        </div>
+            {/* Helper text / Status Badges */}
+            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-100 pt-1.5">
+              <span className="truncate max-w-[200px]" title={typeInfo.label}>
+                {field.helperText || typeInfo.label}
+              </span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[10px] font-mono text-slate-400">
+                  #{index + 1}
+                </span>
+                {field.required && <span className="text-amber-600 font-semibold text-[10px]">Required</span>}
+                {field.readOnly && <span className="text-blue-600 font-semibold text-[10px]">Locked</span>}
+                {field.hidden && <span className="text-rose-500 font-semibold text-[10px]">Hidden</span>}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     );
   };

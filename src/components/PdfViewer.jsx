@@ -103,7 +103,7 @@ function PdfPageCard({
     : (documentId ? getPageImageUrl(documentId, pageNum) : null);
 
   // Filter fields mapped to this specific page (excluding structural page dividers & page breaks)
-  const pageFields = fields.filter(f => (f.pdfMapping?.page || f.page || 1) === pageNum && f.type !== 'Section' && f.type !== 'Divider' && f.type !== 'Page Break');
+  const pageFields = fields.filter(f => (f.pdfMapping?.page || f.page || 1) === pageNum && f.type !== 'Section' && f.type !== 'Section Break' && f.type !== 'Divider' && f.type !== 'Page Break');
 
   return (
     <div 
@@ -219,10 +219,18 @@ function PdfPageCard({
                     </>
                   )}
 
-                  {/* Live Text Value display inside box for text/date/dropdown fields */}
+                  {/* Live Text or Signature Value display inside box */}
                   {field.value && (
-                    <div className="absolute inset-0 px-1 py-0.5 text-[10px] font-medium text-slate-800 pointer-events-none truncate overflow-hidden flex items-center">
-                      {field.value}
+                    <div className="absolute inset-0 px-1 py-0.5 text-[10px] font-medium text-slate-800 pointer-events-none truncate overflow-hidden flex items-center justify-center">
+                      {field.type === 'Signature' && typeof field.value === 'string' && field.value.startsWith('data:image/') ? (
+                        <img src={field.value} alt="Signature" className="max-h-full max-w-full object-contain mx-auto" />
+                      ) : field.type === 'Signature' && field.value ? (
+                        <span style={{ fontFamily: "'Dancing Script', 'Caveat', cursive", color: field.inkColor || '#000000' }} className="text-sm select-none truncate">
+                          {field.value}
+                        </span>
+                      ) : (
+                        field.value
+                      )}
                     </div>
                   )}
                 </div>

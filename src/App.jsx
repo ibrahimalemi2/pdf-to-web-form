@@ -189,7 +189,14 @@ export default function App() {
         required: isCore || idx < 4,
         readOnly: false,
         hidden: false,
-        columnSpan: df.columnSpan || (finalType === 'Long Text' ? 2 : 1),
+        signMethodDraw: df.signMethodDraw ?? true,
+        signMethodType: df.signMethodType ?? true,
+        signMethodUpload: df.signMethodUpload ?? true,
+        padWidth: df.padWidth || 580,
+        padHeight: df.padHeight || 300,
+        consentNotice: df.consentNotice || 'By signing and submitting this form, I agree to sign electronically, with the same legal effect as a handwritten signature.',
+        inkColor: df.inkColor || '#000000',
+        columnSpan: df.columnSpan || (finalType === 'Long Text' || finalType === 'Signature' ? 2 : 1),
         options: rawOptions,
         optionsCoordinates: isCb ? cbCoords : (df.optionsCoordinates || undefined),
         multipleChoices: df.multipleChoices ?? false,
@@ -426,10 +433,13 @@ export default function App() {
   // Add field handler (from sidebar or canvas)
   const handleAddField = (toolType, insertAtIndex) => {
     const newId = `field_${Date.now()}`;
-    const isDivider = toolType === 'Section' || toolType === 'Divider';
+    const isDivider = toolType === 'Divider';
     const isPageBreak = toolType === 'Page Break';
-    const pageBreakCount = fields.filter(f => f.type === 'Page Break' || f.type === 'Section' || f.type === 'Divider').length;
+    const isSectionBreak = toolType === 'Section Break' || toolType === 'Section';
+    const pageBreakCount = fields.filter(f => f.type === 'Page Break').length;
     const newStepNum = pageBreakCount + 2;
+    const sectionBreakCount = fields.filter(f => f.type === 'Section Break' || f.type === 'Section').length;
+    const newSectionNum = sectionBreakCount > 0 ? (sectionBreakCount + 1) : 67;
 
     const defaultLabels = {
       'Short Text': 'Text Field',
@@ -437,9 +447,10 @@ export default function App() {
       'Dropdown': 'Select Choice',
       'Date': 'Effective Date',
       'Checkbox': 'Checkboxes',
-      'Signature': 'Authorized Signature',
+      'Signature': 'Signature',
       'File Upload': 'Document Attachment',
-      'Section': 'Divider Line',
+      'Section Break': 'Section Break',
+      'Section': 'Section Break',
       'Divider': 'Divider Line',
       'Page Break': `Page Break #${newStepNum}`,
       'Header': 'Section Title'
@@ -447,6 +458,7 @@ export default function App() {
 
     const isDate = toolType === 'Date';
     const isCb = toolType === 'Checkbox';
+    const isSig = toolType === 'Signature';
     const cbOpts = isCb ? ['Option 1', 'Option 2'] : undefined;
     const initialY = Math.min(25 + fields.length * 8, 80);
     const cbCoords = isCb ? getSyncedCheckboxCoordinates({
@@ -458,7 +470,7 @@ export default function App() {
       id: newId,
       type: toolType,
       label: defaultLabels[toolType] || `${toolType} Field`,
-      placeholder: isPageBreak ? `Step ${newStepNum} Title` : (isDivider ? 'Divider Line' : isDate ? 'YYYY - MM - DD' : (toolType === 'Header' ? 'Section Title' : `Enter ${toolType.toLowerCase()}...`)),
+      placeholder: isSectionBreak ? 'Title' : (isPageBreak ? `Step ${newStepNum} Title` : (isDivider ? 'Divider Line' : isDate ? 'YYYY - MM - DD' : (toolType === 'Header' ? 'Section Title' : `Enter ${toolType.toLowerCase()}...`))),
       format: isDate ? 'YYYY-MM-DD' : '',
       datePlaceholderYear: 'YYYY',
       datePlaceholderMonth: 'MM',
@@ -468,7 +480,7 @@ export default function App() {
       dateRangeEnd: 'No limit',
       dateErrorMessage: '',
       align: 'left',
-      printInPdf: !isDivider && !isPageBreak,
+      printInPdf: !isDivider && !isPageBreak && !isSectionBreak,
       pdfFont: 'Roboto',
       pdfFontSize: 10,
       pdfFontColor: '#000000',
@@ -478,20 +490,29 @@ export default function App() {
       pdfOverflowSmaller: true,
       pdfOverflowWrap: true,
       pdfTextSpacing: 'Natural',
-      helperText: isPageBreak ? 'Page break: divides the form into steps with a Next button' : (isDivider ? 'Divider line separating questions' : `Configured ${toolType.toLowerCase()} input`),
+      helperText: isSectionBreak ? 'Help text' : (isPageBreak ? 'Page break: divides the form into steps with a Next button' : (isDivider ? 'Divider line separating questions' : `Configured ${toolType.toLowerCase()} input`)),
       value: '',
-      required: false,
+      required: isSig ? true : false,
       readOnly: false,
       hidden: false,
+      signMethodDraw: true,
+      signMethodType: true,
+      signMethodUpload: true,
+      padWidth: 580,
+      padHeight: 300,
+      consentNotice: 'By signing and submitting this form, I agree to sign electronically, with the same legal effect as a handwritten signature.',
+      inkColor: '#000000',
+      isInvisibleLogic: false,
+      sectionNumber: newSectionNum,
       showNavbar: true,
       navbarName: `Step ${newStepNum}`,
-      title: `Step ${newStepNum} Details`,
+      title: isSectionBreak ? 'Title' : `Step ${newStepNum} Details`,
       description: '',
       nextButtonText: 'Continue',
       prevButtonText: 'Back',
       buttonAlign: 'center',
       buttonHelp: '',
-      columnSpan: toolType === 'Long Text' || toolType === 'File Upload' || isDivider || isPageBreak || toolType === 'Header' ? 2 : 1,
+      columnSpan: toolType === 'Long Text' || toolType === 'File Upload' || isDivider || isPageBreak || isSectionBreak || toolType === 'Header' ? 2 : 1,
       options: toolType === 'Dropdown' ? ['Option A', 'Option B', 'Option C'] : cbOpts,
       optionsCoordinates: cbCoords,
       multipleChoices: false,
@@ -500,12 +521,12 @@ export default function App() {
       tickColor: '#000000',
       pdfMapping: {
         page: 1,
-        badgeW: isCb ? '36.0' : '240.0',
-        badgeH: '26.6',
+        badgeW: isCb ? '36.0' : (isSig ? '220.0' : '240.0'),
+        badgeH: isSig ? '40.0' : '26.6',
         x: '24%',
         y: `${initialY}%`,
-        w: isCb ? '12%' : '50%',
-        h: isCb ? '4%' : '5%',
+        w: isCb ? '12%' : (isSig ? '35%' : '50%'),
+        h: isCb ? '4%' : (isSig ? '8%' : '5%'),
         optionsCoordinates: cbCoords
       }
     };
@@ -528,10 +549,10 @@ export default function App() {
     });
 
     setSelectedFieldId(newId);
-    if (!isDivider || isPageBreak) {
+    if (!isDivider || isPageBreak || isSectionBreak) {
       setIsPropertyPanelOpen(true);
     }
-    showToast(isPageBreak ? `✨ Added Page Break #${newStepNum}` : (isDivider ? `✨ Placed Divider Line!` : `Added new ${toolType} component`));
+    showToast(isSectionBreak ? `✨ Added Section Break #${newSectionNum}` : (isPageBreak ? `✨ Added Page Break #${newStepNum}` : (isDivider ? `✨ Placed Divider Line!` : `Added new ${toolType} component`)));
   };
 
   // Add field with coordinates drawn on the PDF canvas
@@ -729,7 +750,7 @@ export default function App() {
     }
 
     if (selectedFieldId === 'submission_buttons') {
-      const pageBreakCount = fields.filter(f => f.type === 'Page Break' || f.type === 'Section' || f.type === 'Divider').length;
+      const pageBreakCount = fields.filter(f => f.type === 'Page Break').length;
       return {
         id: '0',
         rawId: 'submission_buttons',
@@ -746,7 +767,7 @@ export default function App() {
     if (selectedFieldId.startsWith('page_buttons_')) {
       const breakId = selectedFieldId.replace('page_buttons_', '');
       const breakField = fields.find(f => f.id === breakId);
-      const pageBreakFields = fields.filter(f => f.type === 'Page Break' || f.type === 'Section' || f.type === 'Divider');
+      const pageBreakFields = fields.filter(f => f.type === 'Page Break');
       const breakIdx = pageBreakFields.findIndex(f => f.id === breakId);
       const num = breakIdx >= 0 ? breakIdx + 1 : 1;
       const displayNum = breakField ? (breakField.id.replace(/[^0-9]/g, '').slice(-2) || String(60 + num)) : String(60 + num);
@@ -771,7 +792,8 @@ export default function App() {
     if (!f) return 1;
     if (f.id === 'page_break_1') return 1;
     if (f.type === 'Page Buttons' || f.type === 'Submission Buttons') return f.id;
-    const pageBreakFields = fields.filter(item => item.type === 'Page Break' || item.type === 'Section' || item.type === 'Divider');
+    if (f.type === 'Section Break' || f.type === 'Section') return f.sectionNumber || 67;
+    const pageBreakFields = fields.filter(item => item.type === 'Page Break');
     const idx = pageBreakFields.findIndex(item => item.id === f.id);
     return idx >= 0 ? idx + 2 : 1;
   };

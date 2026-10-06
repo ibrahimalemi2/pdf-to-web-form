@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   X,
   Pin,
@@ -23,10 +23,15 @@ import {
   HelpCircle,
   Link2,
   ChevronDown,
-  Layers
+  Layers,
+  Megaphone,
+  ArrowUpDown,
+  ArrowLeftRight,
+  RotateCcw,
+  Pen
 } from 'lucide-react';
 
-import { PageBreakIcon } from './SidebarTools';
+import { PageBreakIcon, SectionBreakIcon } from './SidebarTools';
 
 const ICON_MAP = {
   'Short Text': Type,
@@ -36,7 +41,8 @@ const ICON_MAP = {
   'Checkbox': CheckSquare,
   'Signature': PenTool,
   'File Upload': UploadCloud,
-  'Section': SplitSquareVertical,
+  'Section': SectionBreakIcon,
+  'Section Break': SectionBreakIcon,
   'Page Break': PageBreakIcon,
   'Header': Heading,
 };
@@ -1784,10 +1790,807 @@ export default function FieldPropertiesPanel({
     </div>
   );
 
+  const isSectionBreak = field.type === 'Section Break' || field.type === 'Section';
+  const effectiveSectionNum = field.sectionNumber || (typeof field.id === 'string' && field.id.replace(/[^0-9]/g, '').slice(-2)) || fieldIndex || 67;
+
+  const sectionBreakContent = (
+    <div className="flex flex-col h-full min-h-0 bg-white text-slate-700">
+      {/* Header matching Screenshot 1: Section Break #67 | Logics 📢 ✕ */}
+      <div className="h-14 px-6 border-b border-slate-200/80 flex items-center justify-between shrink-0 bg-white">
+        <div className="flex items-center gap-1.5">
+          <span className="text-base font-bold text-slate-900 tracking-tight">
+            Section Break
+          </span>
+          <span className="text-sm font-normal text-slate-400">
+            #{effectiveSectionNum}
+          </span>
+        </div>
+
+        {/* Right Header Actions: Logics, Speaker/Pin, Close */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onNavigateToLogics?.(field.id)}
+            title="Configure Field Logic Rules"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-slate-100 transition cursor-pointer"
+          >
+            <GitBranch className="w-3.5 h-3.5 text-slate-600" />
+            <span>Logics</span>
+          </button>
+
+          {onTogglePin ? (
+            <button
+              type="button"
+              onClick={onTogglePin}
+              title={isPinned ? "Unpin to floating window" : "Pin to sidebar"}
+              className={`p-1.5 rounded-lg transition cursor-pointer ${
+                isPinned 
+                  ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' 
+                  : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              title="Notifications"
+            >
+              <Megaphone className="w-4 h-4" />
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={onClose}
+            title="Close Settings"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Body container with scroll */}
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-6 sm:p-8 space-y-6 text-xs text-slate-700 [scrollbar-width:thin] [scrollbar-color:#cbd5e1_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300 hover:[&::-webkit-scrollbar-thumb]:bg-slate-400 [&::-webkit-scrollbar-track]:bg-slate-50">
+        
+        {/* Type Selector (Radio Buttons) matching Screenshot 1 */}
+        <div className="flex items-center gap-6 select-none pb-5 border-b border-dotted border-slate-200">
+          <label className="flex items-center gap-2.5 cursor-pointer group">
+            <input
+              type="radio"
+              name={`section-type-${field.id}`}
+              checked={!field.isInvisibleLogic}
+              onChange={() => onUpdateField(field.id, { isInvisibleLogic: false })}
+              className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer accent-[#1877f2]"
+            />
+            <span className={`text-xs font-medium transition ${!field.isInvisibleLogic ? 'text-slate-900 font-semibold' : 'text-slate-600 group-hover:text-slate-900'}`}>
+              Section Break
+            </span>
+          </label>
+
+          <label className="flex items-center gap-2.5 cursor-pointer group">
+            <input
+              type="radio"
+              name={`section-type-${field.id}`}
+              checked={!!field.isInvisibleLogic}
+              onChange={() => onUpdateField(field.id, { isInvisibleLogic: true })}
+              className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer accent-[#1877f2]"
+            />
+            <span className={`text-xs font-medium transition ${field.isInvisibleLogic ? 'text-slate-900 font-semibold' : 'text-slate-600 group-hover:text-slate-900'}`}>
+              Invisible Section Break for Logic
+            </span>
+          </label>
+        </div>
+
+        {/* Section Attributes matching Screenshot 1 */}
+        <div className="space-y-4 pt-1 pb-5 border-b border-dotted border-slate-200">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-400">
+              Section Attributes
+            </span>
+
+            {/* Alignment buttons matching Screenshot 1 (Left active with #1877f2) */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => onUpdateField(field.id, { align: 'left' })}
+                title="Align Left"
+                className={`p-1.5 rounded-lg text-xs transition cursor-pointer ${
+                  (field.align || 'left') === 'left'
+                    ? 'bg-[#1877f2] text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-700'
+                }`}
+              >
+                <AlignLeft className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateField(field.id, { align: 'center' })}
+                title="Align Center"
+                className={`p-1.5 rounded-lg text-xs transition cursor-pointer ${
+                  field.align === 'center'
+                    ? 'bg-[#1877f2] text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-700'
+                }`}
+              >
+                <AlignCenter className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateField(field.id, { align: 'right' })}
+                title="Align Right"
+                className={`p-1.5 rounded-lg text-xs transition cursor-pointer ${
+                  field.align === 'right'
+                    ? 'bg-[#1877f2] text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-700'
+                }`}
+              >
+                <AlignRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Section Title Input */}
+          <div className="flex items-center gap-4">
+            <label className="w-24 sm:w-28 text-xs font-medium text-slate-600 shrink-0">
+              Section Title
+            </label>
+            <input
+              type="text"
+              value={field.title ?? field.label ?? ''}
+              placeholder="Title"
+              onChange={(e) => onUpdateField(field.id, { title: e.target.value, label: e.target.value || 'Title' })}
+              className="flex-1 px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs"
+            />
+          </div>
+
+          {/* Help Text Input */}
+          <div className="flex items-center gap-4">
+            <label className="w-24 sm:w-28 text-xs font-medium text-slate-600 shrink-0">
+              Help Text
+            </label>
+            <input
+              type="text"
+              value={field.helperText ?? field.description ?? ''}
+              placeholder="Help text"
+              onChange={(e) => onUpdateField(field.id, { helperText: e.target.value, description: e.target.value })}
+              className="flex-1 px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs"
+            />
+          </div>
+        </div>
+
+        {/* Read-Only & Hidden Checkboxes matching Screenshot 1 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-5 border-b border-dotted border-slate-200 select-none">
+          <label className="flex items-center gap-2.5 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={field.readOnly ?? false}
+              onChange={(e) => onUpdateField(field.id, { readOnly: e.target.checked })}
+              className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-[#1877f2]"
+            />
+            <span className="text-xs font-medium text-slate-700 group-hover:text-slate-900 transition">
+              Read-Only section on the form
+            </span>
+          </label>
+
+          <label className="flex items-center gap-2.5 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={field.hidden ?? false}
+              onChange={(e) => onUpdateField(field.id, { hidden: e.target.checked })}
+              className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-[#1877f2]"
+            />
+            <span className="text-xs font-medium text-slate-700 group-hover:text-slate-900 transition">
+              Hidden section on the form
+            </span>
+          </label>
+        </div>
+
+        {/* Preview Section matching Screenshot 1 */}
+        <div className="space-y-3 pt-1">
+          <div className="flex items-center gap-2 text-slate-400">
+            <Eye className="w-4 h-4 text-slate-500" />
+            <span className="text-xs font-medium text-slate-400">
+              Preview
+            </span>
+          </div>
+
+          <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 sm:p-8 bg-white min-h-[140px] flex flex-col justify-center transition-all shadow-2xs">
+            <div style={{ textAlign: field.align || 'left' }}>
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                {field.title || field.label || 'Title'}
+              </h3>
+              {(field.helperText || field.description || (!field.title && !field.label)) && (
+                <p className="text-xs text-slate-400 mt-1">
+                  {field.helperText || field.description || 'Help text'}
+                </p>
+              )}
+              <hr className="border-slate-200 mt-4" />
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Done button footer */}
+      <div className="p-4 px-5 border-t border-slate-200/90 bg-slate-50/60 flex items-center justify-end shrink-0">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-5 py-1.5 bg-[#1877f2] hover:bg-blue-600 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer"
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  );
+
+  const isSignature = field.type === 'Signature';
+  const effectiveSigNum = field.fieldNumber || (typeof field.id === 'string' && field.id.replace(/[^0-9]/g, '').slice(-2)) || (fieldIndex ? (60 + fieldIndex) : 63);
+
+  const [sigPreviewTab, setSigPreviewTab] = useState('draw');
+  const [sigPreviewInk, setSigPreviewInk] = useState(field.inkColor || '#000000');
+  const [sigPreviewTyped, setSigPreviewTyped] = useState('');
+  const [sigPreviewDrawn, setSigPreviewDrawn] = useState(false);
+  const previewCanvasRef = useRef(null);
+  const isPreviewDrawingRef = useRef(false);
+
+  useEffect(() => {
+    if (!isSignature || sigPreviewTab !== 'draw') return;
+    const canvas = previewCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    ctx.strokeStyle = sigPreviewInk;
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  }, [isSignature, sigPreviewTab, sigPreviewInk]);
+
+  const getPreviewCanvasCoords = (e) => {
+    const canvas = previewCanvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    if (e.touches && e.touches.length > 0) {
+      return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+    }
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  };
+
+  const startPreviewDrawing = (e) => {
+    if (e.type === 'touchstart') e.preventDefault();
+    const canvas = previewCanvasRef.current;
+    if (!canvas) return;
+    isPreviewDrawingRef.current = true;
+    const pt = getPreviewCanvasCoords(e);
+    const ctx = canvas.getContext('2d');
+    ctx.strokeStyle = sigPreviewInk;
+    ctx.beginPath();
+    ctx.moveTo(pt.x, pt.y);
+    setSigPreviewDrawn(true);
+  };
+
+  const drawPreview = (e) => {
+    if (!isPreviewDrawingRef.current) return;
+    if (e.type === 'touchmove') e.preventDefault();
+    const canvas = previewCanvasRef.current;
+    if (!canvas) return;
+    const pt = getPreviewCanvasCoords(e);
+    const ctx = canvas.getContext('2d');
+    ctx.lineTo(pt.x, pt.y);
+    ctx.stroke();
+  };
+
+  const stopPreviewDrawing = () => {
+    isPreviewDrawingRef.current = false;
+  };
+
+  const clearPreviewDrawing = () => {
+    const canvas = previewCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    setSigPreviewDrawn(false);
+  };
+
+  const signatureContent = (
+    <div className="flex flex-col h-full min-h-0 bg-white text-slate-700">
+      {/* Header matching Screenshot: Signature #63 | Logics 📌 ✕ */}
+      <div className="h-14 px-6 border-b border-slate-200/80 flex items-center justify-between shrink-0 bg-white">
+        <div className="flex items-center gap-1.5">
+          <span className="text-base font-bold text-slate-900 tracking-tight">
+            Signature
+          </span>
+          <span className="text-sm font-normal text-slate-400">
+            #{effectiveSigNum}
+          </span>
+        </div>
+
+        {/* Right Header Actions: Logics, Pin, Close */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onNavigateToLogics?.(field.id)}
+            title="Configure Field Logic Rules"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-slate-100 transition cursor-pointer"
+          >
+            <GitBranch className="w-3.5 h-3.5 text-slate-600" />
+            <span>Logics</span>
+          </button>
+
+          {onTogglePin ? (
+            <button
+              type="button"
+              onClick={onTogglePin}
+              title={isPinned ? "Unpin to floating window" : "Pin to sidebar"}
+              className={`p-1.5 rounded-lg transition cursor-pointer ${
+                isPinned 
+                  ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' 
+                  : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              title="Pin settings"
+            >
+              <Pin className="w-4 h-4" />
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={onClose}
+            title="Close Settings"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Body with scrolling */}
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-6 sm:p-8 space-y-6 text-xs text-slate-700 [scrollbar-width:thin] [scrollbar-color:#cbd5e1_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300 hover:[&::-webkit-scrollbar-thumb]:bg-slate-400 [&::-webkit-scrollbar-track]:bg-slate-50">
+        
+        {/* Form Attributes matching Screenshot */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-400">
+              Form Attributes
+            </span>
+
+            {/* Alignment buttons (Left active with #1877f2) */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => onUpdateField(field.id, { align: 'left' })}
+                title="Align Left"
+                className={`p-1.5 rounded-md text-xs transition cursor-pointer ${
+                  (field.align || 'left') === 'left'
+                    ? 'bg-[#1877f2] text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-700'
+                }`}
+              >
+                <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="currentColor">
+                  <rect x="2" y="3" width="7" height="2" rx="0.5" />
+                  <rect x="2" y="7" width="12" height="2" rx="0.5" />
+                  <rect x="2" y="11" width="5" height="2" rx="0.5" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateField(field.id, { align: 'center' })}
+                title="Align Center"
+                className={`p-1.5 rounded-md text-xs transition cursor-pointer ${
+                  field.align === 'center'
+                    ? 'bg-[#1877f2] text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-700'
+                }`}
+              >
+                <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="currentColor">
+                  <rect x="4.5" y="3" width="7" height="2" rx="0.5" />
+                  <rect x="2" y="7" width="12" height="2" rx="0.5" />
+                  <rect x="5.5" y="11" width="5" height="2" rx="0.5" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateField(field.id, { align: 'right' })}
+                title="Align Right"
+                className={`p-1.5 rounded-md text-xs transition cursor-pointer ${
+                  field.align === 'right'
+                    ? 'bg-[#1877f2] text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-700'
+                }`}
+              >
+                <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="currentColor">
+                  <rect x="7" y="3" width="7" height="2" rx="0.5" />
+                  <rect x="2" y="7" width="12" height="2" rx="0.5" />
+                  <rect x="9" y="11" width="5" height="2" rx="0.5" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Label Input with horizontal bidirectional icon matching Screenshot */}
+          <div className="flex items-center gap-4">
+            <label className="w-20 text-xs font-medium text-slate-600 shrink-0">
+              Label
+            </label>
+            <div className="flex-1 max-w-sm relative flex items-center">
+              <input
+                type="text"
+                value={field.label ?? 'Signature'}
+                onChange={(e) => onUpdateField(field.id, { label: e.target.value })}
+                className="w-full px-3 py-2 pr-9 text-xs rounded-lg border border-blue-500 ring-1 ring-blue-500/20 bg-white text-slate-900 focus:outline-none transition shadow-2xs"
+              />
+              <span className="absolute right-2.5 text-slate-400 pointer-events-none">
+                <ArrowLeftRight className="w-3.5 h-3.5" />
+              </span>
+            </div>
+          </div>
+
+          {/* 4 Checkboxes in a single row matching Screenshot */}
+          <div className="flex flex-wrap items-center gap-6 pt-1 select-none">
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={field.required ?? true}
+                onChange={(e) => onUpdateField(field.id, { required: e.target.checked })}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-[#1877f2]"
+              />
+              <span className="text-xs font-medium text-slate-700 group-hover:text-slate-900 transition">
+                Required
+              </span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={field.readOnly ?? false}
+                onChange={(e) => onUpdateField(field.id, { readOnly: e.target.checked })}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-[#1877f2]"
+              />
+              <span className="text-xs font-medium text-slate-700 group-hover:text-slate-900 transition">
+                Read-only on Form
+              </span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={field.hidden ?? false}
+                onChange={(e) => onUpdateField(field.id, { hidden: e.target.checked })}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-[#1877f2]"
+              />
+              <span className="text-xs font-medium text-slate-700 group-hover:text-slate-900 transition">
+                Hidden on Form
+              </span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={field.printInPdf ?? true}
+                onChange={(e) => onUpdateField(field.id, { printInPdf: e.target.checked })}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-[#1877f2]"
+              />
+              <span className="text-xs font-medium text-slate-700 group-hover:text-slate-900 transition">
+                Print in PDF
+              </span>
+            </label>
+          </div>
+        </div>
+
+        {/* Dotted divider */}
+        <div className="border-b border-dotted border-slate-200" />
+
+        {/* Sign Method matching Screenshot */}
+        <div className="flex items-center gap-6 pt-1 select-none">
+          <label className="w-24 text-xs font-medium text-slate-600 shrink-0">
+            Sign Method
+          </label>
+          <div className="flex items-center gap-10">
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={field.signMethodDraw ?? true}
+                onChange={(e) => onUpdateField(field.id, { signMethodDraw: e.target.checked })}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-[#1877f2]"
+              />
+              <span className="text-xs font-medium text-slate-700 group-hover:text-slate-900 transition">
+                Draw
+              </span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={field.signMethodType ?? true}
+                onChange={(e) => onUpdateField(field.id, { signMethodType: e.target.checked })}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-[#1877f2]"
+              />
+              <span className="text-xs font-medium text-slate-700 group-hover:text-slate-900 transition">
+                Type
+              </span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={field.signMethodUpload ?? true}
+                onChange={(e) => onUpdateField(field.id, { signMethodUpload: e.target.checked })}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-[#1877f2]"
+              />
+              <span className="text-xs font-medium text-slate-700 group-hover:text-slate-900 transition">
+                Upload
+              </span>
+            </label>
+          </div>
+        </div>
+
+        {/* Pad Size matching Screenshot */}
+        <div className="flex items-center gap-6 select-none">
+          <label className="w-24 text-xs font-medium text-slate-600 shrink-0">
+            Pad Size
+          </label>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500">Width</span>
+              <input
+                type="number"
+                value={field.padWidth || 580}
+                onChange={(e) => onUpdateField(field.id, { padWidth: parseInt(e.target.value) || 580 })}
+                className="w-32 px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500">Height</span>
+              <input
+                type="number"
+                value={field.padHeight || 300}
+                onChange={(e) => onUpdateField(field.id, { padHeight: parseInt(e.target.value) || 300 })}
+                className="w-32 px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Consent Notice matching Screenshot */}
+        <div className="space-y-1">
+          <div className="flex items-start gap-6">
+            <label className="w-24 text-xs font-medium text-slate-600 shrink-0 pt-2">
+              Consent notice
+            </label>
+            <div className="flex-1">
+              <input
+                type="text"
+                value={field.consentNotice ?? 'By signing and submitting this form, I agree to sign electronically, with the same legal effect as a handwritten signature.'}
+                onChange={(e) => onUpdateField(field.id, { consentNotice: e.target.value })}
+                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs"
+              />
+              <p className="text-[11px] text-slate-400 mt-1">
+                Shown only for invitations or workflow steps that produce a signature certificate.
+              </p>
+              <div className="flex justify-end mt-1">
+                <button
+                  type="button"
+                  onClick={() => onUpdateField(field.id, { reuseOnPdf: true })}
+                  className="text-xs font-medium text-[#1877f2] hover:underline cursor-pointer"
+                >
+                  Reuse Content on PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Dotted divider */}
+        <div className="border-b border-dotted border-slate-200" />
+
+        {/* Preview Section matching Screenshot */}
+        <div className="space-y-2 pt-1">
+          <div className="flex items-center gap-2 text-slate-400">
+            <Eye className="w-4 h-4 text-slate-500" />
+            <span className="text-xs font-semibold text-slate-400">
+              Preview
+            </span>
+          </div>
+
+          {/* Form Preview centered tooltip pill matching screenshot */}
+          <div className="flex justify-center -mb-3 relative z-10 select-none">
+            <div className="inline-flex flex-col items-center">
+              <span className="bg-[#e8f1fd] text-[#1877f2] font-semibold text-[11px] px-3.5 py-1 rounded-md shadow-2xs tracking-tight">
+                Form Preview
+              </span>
+              <div className="w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-[#e8f1fd]" />
+            </div>
+          </div>
+
+          <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 bg-white min-h-[300px] transition-all shadow-2xs">
+            <div style={{ textAlign: field.align || 'left' }} className="mb-3">
+              <span className="text-xs font-bold text-slate-900">
+                {field.label || 'Signature'}
+                {field.required && <span className="text-red-500 ml-0.5">*</span>}
+              </span>
+            </div>
+
+            {/* Signature Box in Preview matching PlatoForms screenshot */}
+            <div className="border border-slate-200 rounded-xl overflow-hidden bg-white max-w-lg mx-auto shadow-2xs">
+              {/* Tabs */}
+              <div className="border-b border-slate-200 bg-white px-5 pt-3 flex items-center gap-6 select-none">
+                {(field.signMethodDraw ?? true) && (
+                  <button
+                    type="button"
+                    onClick={() => setSigPreviewTab('draw')}
+                    className={`text-xs font-medium pb-2 border-b-2 transition cursor-pointer ${
+                      sigPreviewTab === 'draw'
+                        ? 'border-slate-800 text-slate-800 font-semibold'
+                        : 'border-transparent text-slate-400 hover:text-slate-700'
+                    }`}
+                  >
+                    Draw
+                  </button>
+                )}
+                {(field.signMethodType ?? true) && (
+                  <button
+                    type="button"
+                    onClick={() => setSigPreviewTab('type')}
+                    className={`text-xs font-medium pb-2 border-b-2 transition cursor-pointer ${
+                      sigPreviewTab === 'type'
+                        ? 'border-slate-800 text-slate-800 font-semibold'
+                        : 'border-transparent text-slate-400 hover:text-slate-700'
+                    }`}
+                  >
+                    Type
+                  </button>
+                )}
+                {(field.signMethodUpload ?? true) && (
+                  <button
+                    type="button"
+                    onClick={() => setSigPreviewTab('upload')}
+                    className={`text-xs font-medium pb-2 border-b-2 transition cursor-pointer ${
+                      sigPreviewTab === 'upload'
+                        ? 'border-slate-800 text-slate-800 font-semibold'
+                        : 'border-transparent text-slate-400 hover:text-slate-700'
+                    }`}
+                  >
+                    Upload
+                  </button>
+                )}
+              </div>
+
+              {/* Pad inner */}
+              <div className="p-4 bg-white">
+                {sigPreviewTab === 'draw' && (
+                  <div className="relative border border-dashed border-slate-200/90 rounded-lg overflow-hidden bg-white h-44">
+                    <canvas
+                      ref={previewCanvasRef}
+                      onMouseDown={startPreviewDrawing}
+                      onMouseMove={drawPreview}
+                      onMouseUp={stopPreviewDrawing}
+                      onMouseLeave={stopPreviewDrawing}
+                      onTouchStart={startPreviewDrawing}
+                      onTouchMove={drawPreview}
+                      onTouchEnd={stopPreviewDrawing}
+                      className="w-full h-full cursor-crosshair touch-none"
+                    />
+                    {!sigPreviewDrawn && (
+                      <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-slate-300 text-xs font-medium">
+                        Draw signature here with mouse
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {sigPreviewTab === 'type' && (
+                  <div className="border border-dashed border-slate-200/90 rounded-lg p-4 bg-white h-44 flex flex-col justify-center items-center gap-2">
+                    <input
+                      type="text"
+                      value={sigPreviewTyped}
+                      onChange={(e) => setSigPreviewTyped(e.target.value)}
+                      placeholder="Type name here..."
+                      className="text-xs px-3 py-1.5 border border-slate-200 rounded text-center w-52 focus:outline-none focus:border-blue-500"
+                    />
+                    <div style={{ fontFamily: "'Dancing Script', 'Caveat', cursive", color: sigPreviewInk }} className="text-3xl select-none mt-2">
+                      {sigPreviewTyped || 'Signature'}
+                    </div>
+                  </div>
+                )}
+
+                {sigPreviewTab === 'upload' && (
+                  <div className="border border-dashed border-slate-200/90 rounded-lg p-4 bg-white h-44 flex flex-col justify-center items-center text-slate-400 text-xs text-center gap-2">
+                    <UploadCloud className="w-7 h-7 text-blue-500" />
+                    <span>Upload signature file preview</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Bottom toolbar */}
+              <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={clearPreviewDrawing}
+                  className="px-4 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold transition cursor-pointer"
+                >
+                  Clear
+                </button>
+
+                {/* Ink Color Dots */}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSigPreviewInk('#000000');
+                      onUpdateField(field.id, { inkColor: '#000000' });
+                    }}
+                    title="Black"
+                    className={`w-4 h-4 rounded-full bg-black cursor-pointer transition ${
+                      sigPreviewInk === '#000000' ? 'ring-2 ring-blue-500 ring-offset-2' : ''
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSigPreviewInk('#1d4ed8');
+                      onUpdateField(field.id, { inkColor: '#1d4ed8' });
+                    }}
+                    title="Blue"
+                    className={`w-4 h-4 rounded-full bg-blue-600 cursor-pointer transition ${
+                      sigPreviewInk === '#1d4ed8' ? 'ring-2 ring-blue-500 ring-offset-2' : ''
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSigPreviewInk('#dc2626');
+                      onUpdateField(field.id, { inkColor: '#dc2626' });
+                    }}
+                    title="Red"
+                    className={`w-4 h-4 rounded-full bg-red-600 cursor-pointer transition ${
+                      sigPreviewInk === '#dc2626' ? 'ring-2 ring-blue-500 ring-offset-2' : ''
+                    }`}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Done button footer */}
+      <div className="p-4 px-5 border-t border-slate-200/90 bg-slate-50/60 flex items-center justify-end shrink-0">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-5 py-1.5 bg-[#1877f2] hover:bg-blue-600 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer"
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  );
+
   const activeContent = isPageButtons
     ? pageButtonsContent
     : isPageBreak
     ? pageBreakContent
+    : isSectionBreak
+    ? sectionBreakContent
+    : isSignature
+    ? signatureContent
     : panelContent;
 
   // If PINNED: Render docked right-hand inspector panel
