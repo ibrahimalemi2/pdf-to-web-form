@@ -437,7 +437,8 @@ export default function PreviewMode({
             rows={3}
             value={val}
             onChange={(e) => handleInputChange(field.id, e.target.value)}
-            className={`w-full bg-white border rounded-md p-3 text-sm text-slate-800 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition shadow-2xs resize-y min-h-[90px] ${
+            placeholder={field.placeholder || ''}
+            className={`w-full bg-white border rounded-md p-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition shadow-2xs resize-y min-h-[90px] ${
               hasErr ? 'border-red-500 ring-1 ring-red-500 bg-red-50/20' : 'border-slate-300 hover:border-slate-400'
             }`}
           />
@@ -453,7 +454,7 @@ export default function PreviewMode({
                 hasErr ? 'border-red-500 ring-1 ring-red-500 bg-red-50/20' : 'border-slate-300 hover:border-slate-400'
               }`}
             >
-              <option value="">-</option>
+              <option value="">{field.placeholder || '-'}</option>
               {(field.options || ['Option A', 'Option B', 'Option C']).map((opt, idx) => (
                 <option key={idx} value={opt}>
                   {opt}
@@ -471,7 +472,8 @@ export default function PreviewMode({
               type="date"
               value={val}
               onChange={(e) => handleInputChange(field.id, e.target.value)}
-              className={`w-full h-10 bg-white border rounded-md px-3 text-sm text-slate-800 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition shadow-2xs ${
+              placeholder={field.placeholder || 'YYYY-MM-DD'}
+              className={`w-full h-10 bg-white border rounded-md px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition shadow-2xs ${
                 hasErr ? 'border-red-500 ring-1 ring-red-500 bg-red-50/20' : 'border-slate-300 hover:border-slate-400'
               }`}
             />
@@ -802,7 +804,8 @@ export default function PreviewMode({
                 type="text"
                 value={val}
                 onChange={(e) => handleInputChange(field.id, e.target.value)}
-                className={`w-full h-10 bg-white border rounded-md pl-9 pr-3 text-sm text-slate-800 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition shadow-2xs ${
+                placeholder={field.placeholder || ''}
+                className={`w-full h-10 bg-white border rounded-md pl-9 pr-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition shadow-2xs ${
                   hasErr ? 'border-red-500 ring-1 ring-red-500 bg-red-50/20' : 'border-slate-300 hover:border-slate-400'
                 }`}
               />
@@ -817,7 +820,8 @@ export default function PreviewMode({
               rows={3}
               value={val}
               onChange={(e) => handleInputChange(field.id, e.target.value)}
-              className={`w-full bg-white border rounded-md p-3 text-sm text-slate-800 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition shadow-2xs resize-y min-h-[90px] ${
+              placeholder={field.placeholder || ''}
+              className={`w-full bg-white border rounded-md p-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition shadow-2xs resize-y min-h-[90px] ${
                 hasErr ? 'border-red-500 ring-1 ring-red-500 bg-red-50/20' : 'border-slate-300 hover:border-slate-400'
               }`}
             />
@@ -829,7 +833,8 @@ export default function PreviewMode({
             type="text"
             value={val}
             onChange={(e) => handleInputChange(field.id, e.target.value)}
-            className={`w-full h-10 bg-white border rounded-md px-3 text-sm text-slate-800 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition shadow-2xs ${
+            placeholder={field.placeholder || ''}
+            className={`w-full h-10 bg-white border rounded-md px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition shadow-2xs ${
               hasErr ? 'border-red-500 ring-1 ring-red-500 bg-red-50/20' : 'border-slate-300 hover:border-slate-400'
             }`}
           />
@@ -850,8 +855,8 @@ export default function PreviewMode({
             autoFocus
             value={val}
             onChange={(e) => handleInputChange(field.id, e.target.value)}
-            placeholder="Type your detailed answer here..."
-            className="w-full text-sm sm:text-base border-b-2 border-slate-300 focus:border-blue-600 pb-2 bg-transparent focus:outline-none transition leading-relaxed resize-none"
+            placeholder={field.placeholder || "Type your detailed answer here..."}
+            className="w-full text-sm sm:text-base border-b-2 border-slate-300 focus:border-blue-600 pb-2 bg-transparent focus:outline-none transition leading-relaxed resize-none placeholder:text-slate-400"
           />
         );
 
@@ -864,7 +869,7 @@ export default function PreviewMode({
               onChange={(e) => handleInputChange(field.id, e.target.value)}
               className="w-full text-base sm:text-lg border-b-2 border-slate-300 focus:border-blue-600 pb-2 bg-transparent focus:outline-none transition cursor-pointer"
             >
-              <option value="">Select your option...</option>
+              <option value="">{field.placeholder || "Select your option..."}</option>
               {(field.options || ['Option A', 'Option B', 'Option C']).map((opt, idx) => (
                 <option key={idx} value={opt}>
                   {opt}
@@ -883,7 +888,8 @@ export default function PreviewMode({
               autoFocus
               value={val}
               onChange={(e) => handleInputChange(field.id, e.target.value)}
-              className="w-full text-base sm:text-lg border-b-2 border-slate-300 focus:border-blue-600 pb-2 bg-transparent focus:outline-none transition"
+              placeholder={field.placeholder || 'YYYY-MM-DD'}
+              className="w-full text-base sm:text-lg border-b-2 border-slate-300 focus:border-blue-600 pb-2 bg-transparent focus:outline-none transition placeholder:text-slate-400"
             />
           </div>
         );
@@ -1102,8 +1108,8 @@ export default function PreviewMode({
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleConversationalNext();
             }}
-            placeholder="Type your answer here..."
-            className="w-full text-base sm:text-lg border-b-2 border-slate-300 focus:border-blue-600 pb-2 bg-transparent focus:outline-none transition"
+            placeholder={field.placeholder || "Type your answer here..."}
+            className="w-full text-base sm:text-lg border-b-2 border-slate-300 focus:border-blue-600 pb-2 bg-transparent focus:outline-none transition placeholder:text-slate-400"
           />
         );
     }
