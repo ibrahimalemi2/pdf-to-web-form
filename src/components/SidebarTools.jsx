@@ -11,6 +11,29 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 
+// Exact match PlatoForms Page Break icon: ][ with horizontal divider
+export function PageBreakIcon({ className = "w-5 h-5", ...props }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      {/* Left bracket ] */}
+      <path d="M4 8h3v8H4" />
+      {/* Right bracket [ */}
+      <path d="M20 8h-3v8h3" />
+      {/* Center break line */}
+      <line x1="7" y1="12" x2="17" y2="12" />
+    </svg>
+  );
+}
+
 const TOOLS = [
   {
     id: 'text-input',
@@ -57,8 +80,14 @@ const TOOLS = [
   {
     id: 'separator',
     label: 'Divider Line',
-    type: 'Section',
+    type: 'Divider',
     icon: SeparatorHorizontal
+  },
+  {
+    id: 'page-break',
+    label: 'Page Break',
+    type: 'Page Break',
+    icon: PageBreakIcon
   }
 ];
 

@@ -43,7 +43,17 @@ export default function App() {
   const [showConnectors, setShowConnectors] = useState(true);
   const [formMeta, setFormMeta] = useState({
     title: 'Assignment Submission Form',
-    description: 'Collects student assignment details and answers for parallel computing coursework.'
+    description: 'Collects student assignment details and answers for parallel computing coursework.',
+    navbarName: 'Step 1',
+    showNavbar: true,
+    align: 'left',
+    readOnly: false,
+    hidden: false,
+    nextButtonText: 'Continue',
+    prevButtonText: 'Back',
+    submitButtonText: 'Submit',
+    buttonAlign: 'center',
+    buttonHelp: ''
   });
 
   // Dynamic Form Logic Rules
@@ -417,6 +427,10 @@ export default function App() {
   const handleAddField = (toolType, insertAtIndex) => {
     const newId = `field_${Date.now()}`;
     const isDivider = toolType === 'Section' || toolType === 'Divider';
+    const isPageBreak = toolType === 'Page Break';
+    const pageBreakCount = fields.filter(f => f.type === 'Page Break' || f.type === 'Section' || f.type === 'Divider').length;
+    const newStepNum = pageBreakCount + 2;
+
     const defaultLabels = {
       'Short Text': 'Text Field',
       'Long Text': 'Paragraph Notes',
@@ -425,8 +439,9 @@ export default function App() {
       'Checkbox': 'Checkboxes',
       'Signature': 'Authorized Signature',
       'File Upload': 'Document Attachment',
-      'Section': 'Page Break: Next Step',
-      'Divider': 'Page Break: Next Step',
+      'Section': 'Divider Line',
+      'Divider': 'Divider Line',
+      'Page Break': `Page Break #${newStepNum}`,
       'Header': 'Section Title'
     };
 
@@ -443,7 +458,7 @@ export default function App() {
       id: newId,
       type: toolType,
       label: defaultLabels[toolType] || `${toolType} Field`,
-      placeholder: isDivider ? 'Next Step Title' : isDate ? 'YYYY - MM - DD' : (toolType === 'Header' ? 'Section Title' : `Enter ${toolType.toLowerCase()}...`),
+      placeholder: isPageBreak ? `Step ${newStepNum} Title` : (isDivider ? 'Divider Line' : isDate ? 'YYYY - MM - DD' : (toolType === 'Header' ? 'Section Title' : `Enter ${toolType.toLowerCase()}...`)),
       format: isDate ? 'YYYY-MM-DD' : '',
       datePlaceholderYear: 'YYYY',
       datePlaceholderMonth: 'MM',
@@ -453,7 +468,7 @@ export default function App() {
       dateRangeEnd: 'No limit',
       dateErrorMessage: '',
       align: 'left',
-      printInPdf: !isDivider,
+      printInPdf: !isDivider && !isPageBreak,
       pdfFont: 'Roboto',
       pdfFontSize: 10,
       pdfFontColor: '#000000',
@@ -463,12 +478,20 @@ export default function App() {
       pdfOverflowSmaller: true,
       pdfOverflowWrap: true,
       pdfTextSpacing: 'Natural',
-      helperText: isDivider ? 'Divider Line: in preview, user fills previous fields, then clicks Next' : `Configured ${toolType.toLowerCase()} input`,
+      helperText: isPageBreak ? 'Page break: divides the form into steps with a Next button' : (isDivider ? 'Divider line separating questions' : `Configured ${toolType.toLowerCase()} input`),
       value: '',
       required: false,
       readOnly: false,
       hidden: false,
-      columnSpan: toolType === 'Long Text' || toolType === 'File Upload' || isDivider || toolType === 'Header' ? 2 : 1,
+      showNavbar: true,
+      navbarName: `Step ${newStepNum}`,
+      title: `Step ${newStepNum} Details`,
+      description: '',
+      nextButtonText: 'Continue',
+      prevButtonText: 'Back',
+      buttonAlign: 'center',
+      buttonHelp: '',
+      columnSpan: toolType === 'Long Text' || toolType === 'File Upload' || isDivider || isPageBreak || toolType === 'Header' ? 2 : 1,
       options: toolType === 'Dropdown' ? ['Option A', 'Option B', 'Option C'] : cbOpts,
       optionsCoordinates: cbCoords,
       multipleChoices: false,
@@ -505,10 +528,10 @@ export default function App() {
     });
 
     setSelectedFieldId(newId);
-    if (!isDivider) {
+    if (!isDivider || isPageBreak) {
       setIsPropertyPanelOpen(true);
     }
-    showToast(isDivider ? `✨ Placed Divider Line! In Preview, it will require "Next" to continue.` : `Added new ${toolType} component`);
+    showToast(isPageBreak ? `✨ Added Page Break #${newStepNum}` : (isDivider ? `✨ Placed Divider Line!` : `Added new ${toolType} component`));
   };
 
   // Add field with coordinates drawn on the PDF canvas
@@ -544,6 +567,44 @@ export default function App() {
 
   // Update field handler
   const handleUpdateField = (id, updates) => {
+    if (id === 'page_break_1') {
+      setFormMeta(prev => ({
+        ...prev,
+        ...updates
+      }));
+      return;
+    }
+
+    if (id === '0' || id === 'submission_buttons' || selectedFieldId === 'submission_buttons') {
+      setFormMeta(prev => ({
+        ...prev,
+        ...updates,
+        submitButtonText: updates.nextButtonText !== undefined ? updates.nextButtonText : (updates.submitButtonText !== undefined ? updates.submitButtonText : prev.submitButtonText),
+        prevButtonText: updates.prevButtonText !== undefined ? updates.prevButtonText : prev.prevButtonText,
+        buttonAlign: updates.buttonAlign !== undefined ? updates.buttonAlign : prev.buttonAlign,
+        buttonHelp: updates.buttonHelp !== undefined ? updates.buttonHelp : prev.buttonHelp,
+      }));
+      return;
+    }
+
+    if (typeof id === 'string' && id.startsWith('page_buttons_')) {
+      const targetBreakId = id.replace('page_buttons_', '');
+      setFields(prev => prev.map(f => {
+        if (f.id !== targetBreakId) return f;
+        return { ...f, ...updates };
+      }));
+      return;
+    }
+
+    if (selectedFieldId && selectedFieldId.startsWith('page_buttons_')) {
+      const targetBreakId = selectedFieldId.replace('page_buttons_', '');
+      setFields(prev => prev.map(f => {
+        if (f.id !== targetBreakId) return f;
+        return { ...f, ...updates };
+      }));
+      return;
+    }
+
     setFields(prev => prev.map(f => {
       if (f.id !== id) return f;
       const merged = { ...f, ...updates };
@@ -556,12 +617,19 @@ export default function App() {
 
   // Delete field handler
   const handleDeleteField = (id) => {
+    if (id === 'page_break_1') {
+      showToast('Step 1 is the primary page and cannot be removed.');
+      return;
+    }
+    if (id === '0' || id === 'submission_buttons' || (typeof id === 'string' && id.startsWith('page_buttons_'))) {
+      return;
+    }
     const remaining = fields.filter(f => f.id !== id);
     setFields(remaining);
     if (selectedFieldId === id) {
       setSelectedFieldId(remaining.length > 0 ? remaining[0].id : null);
     }
-    showToast('Field removed from canvas and PDF');
+    showToast('Removed item from form.');
   };
 
   // Duplicate field handler
@@ -642,7 +710,71 @@ export default function App() {
     showToast(`🚀 Published! Form with ${fields.length} mapped fields is live.`);
   };
 
-  const selectedField = fields.find(f => f.id === selectedFieldId);
+  const selectedField = React.useMemo(() => {
+    if (!selectedFieldId) return null;
+
+    if (selectedFieldId === 'page_break_1') {
+      return {
+        id: 'page_break_1',
+        type: 'Page Break',
+        pageIndex: 1,
+        navbarName: formMeta.navbarName || 'Step 1',
+        showNavbar: formMeta.showNavbar ?? true,
+        title: formMeta.title || 'Assignment Submission Form',
+        description: formMeta.description || '',
+        align: formMeta.align || 'left',
+        readOnly: !!formMeta.readOnly,
+        hidden: !!formMeta.hidden
+      };
+    }
+
+    if (selectedFieldId === 'submission_buttons') {
+      const pageBreakCount = fields.filter(f => f.type === 'Page Break' || f.type === 'Section' || f.type === 'Divider').length;
+      return {
+        id: '0',
+        rawId: 'submission_buttons',
+        type: 'Submission Buttons',
+        label: 'Submission Buttons',
+        nextButtonText: formMeta.submitButtonText || 'Submit',
+        prevButtonText: formMeta.prevButtonText || 'Back',
+        buttonAlign: formMeta.buttonAlign || 'center',
+        buttonHelp: formMeta.buttonHelp || '',
+        hasPrev: pageBreakCount > 0
+      };
+    }
+
+    if (selectedFieldId.startsWith('page_buttons_')) {
+      const breakId = selectedFieldId.replace('page_buttons_', '');
+      const breakField = fields.find(f => f.id === breakId);
+      const pageBreakFields = fields.filter(f => f.type === 'Page Break' || f.type === 'Section' || f.type === 'Divider');
+      const breakIdx = pageBreakFields.findIndex(f => f.id === breakId);
+      const num = breakIdx >= 0 ? breakIdx + 1 : 1;
+      const displayNum = breakField ? (breakField.id.replace(/[^0-9]/g, '').slice(-2) || String(60 + num)) : String(60 + num);
+
+      return {
+        id: displayNum,
+        rawId: breakId,
+        type: 'Page Buttons',
+        label: 'Page Buttons',
+        nextButtonText: breakField?.nextButtonText || 'Continue',
+        prevButtonText: breakField?.prevButtonText || 'Back',
+        buttonAlign: breakField?.buttonAlign || 'center',
+        buttonHelp: breakField?.buttonHelp || '',
+        hasPrev: num > 1
+      };
+    }
+
+    return fields.find(f => f.id === selectedFieldId) || null;
+  }, [selectedFieldId, fields, formMeta]);
+
+  const getPageBreakNumber = (f) => {
+    if (!f) return 1;
+    if (f.id === 'page_break_1') return 1;
+    if (f.type === 'Page Buttons' || f.type === 'Submission Buttons') return f.id;
+    const pageBreakFields = fields.filter(item => item.type === 'Page Break' || item.type === 'Section' || item.type === 'Divider');
+    const idx = pageBreakFields.findIndex(item => item.id === f.id);
+    return idx >= 0 ? idx + 2 : 1;
+  };
 
   // VIEW 1: Landing Screen
   if (currentView === 'upload') {
@@ -669,6 +801,7 @@ export default function App() {
       <PreviewMode
         formTitle={formMeta.title || "Assignment Submission Form"}
         formDescription={formMeta.description || "Collects student assignment details and answers for parallel computing coursework."}
+        formMeta={formMeta}
         fields={fields}
         logicRules={logicRules}
         documentName={documentName}
@@ -746,9 +879,10 @@ export default function App() {
             onAddField={handleAddField}
             onPopulateAiFields={handlePopulateAiFields}
             step={1}
-            totalSteps={fields.filter(f => f.type === 'Section' || f.type === 'Divider').length + 1}
+            totalSteps={fields.filter(f => f.type === 'Page Break' || f.type === 'Section' || f.type === 'Divider').length + 1}
             formTitle={formMeta.title}
             formDescription={formMeta.description}
+            formMeta={formMeta}
             onUpdateFormMeta={(meta) => setFormMeta(prev => ({ ...prev, ...meta }))}
             detectedBackendFields={detectedBackendFields}
             hoveredFieldId={hoveredFieldId}
@@ -783,6 +917,7 @@ export default function App() {
             onTogglePin={() => setIsPropertyPanelPinned(false)}
             onNavigateToLogics={(fieldId) => handleOpenLogicDrawer(fieldId)}
             fieldIndex={fields.findIndex(f => f.id === selectedField.id) + 1}
+            pageBreakNumber={getPageBreakNumber(selectedField)}
           />
         )}
 
@@ -846,6 +981,7 @@ export default function App() {
           onTogglePin={() => setIsPropertyPanelPinned(true)}
           onNavigateToLogics={(fieldId) => handleOpenLogicDrawer(fieldId)}
           fieldIndex={fields.findIndex(f => f.id === selectedField.id) + 1}
+          pageBreakNumber={getPageBreakNumber(selectedField)}
         />
       )}
 

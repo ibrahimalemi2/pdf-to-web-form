@@ -26,6 +26,8 @@ import {
   Layers
 } from 'lucide-react';
 
+import { PageBreakIcon } from './SidebarTools';
+
 const ICON_MAP = {
   'Short Text': Type,
   'Long Text': AlignLeft,
@@ -35,6 +37,7 @@ const ICON_MAP = {
   'Signature': PenTool,
   'File Upload': UploadCloud,
   'Section': SplitSquareVertical,
+  'Page Break': PageBreakIcon,
   'Header': Heading,
 };
 
@@ -56,7 +59,8 @@ export default function FieldPropertiesPanel({
   isPinned = false,
   onTogglePin,
   onNavigateToLogics,
-  fieldIndex = 1
+  fieldIndex = 1,
+  pageBreakNumber = 1
 }) {
   const [newOptionText, setNewOptionText] = useState('');
   const [showCoordinates, setShowCoordinates] = useState(false);
@@ -1345,11 +1349,452 @@ export default function FieldPropertiesPanel({
     </div>
   );
 
+  const isPageBreak = field.type === 'Page Break' || field.id === 'page_break_1';
+  const effectivePageBreakNum = pageBreakNumber || field.pageIndex || 1;
+
+  const pageBreakContent = (
+    <div className="flex flex-col h-full min-h-0 bg-white text-slate-700">
+      {/* Header matching Screenshot: Page Break #1 | Logics 📌 ✕ */}
+      <div className="h-13 px-5 border-b border-slate-200/80 flex items-center justify-between shrink-0 bg-white">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-slate-800">
+            Page Break #{effectivePageBreakNum}
+          </span>
+        </div>
+
+        {/* Right Header Actions: Logics, Pin, Close */}
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => onNavigateToLogics?.(field.id)}
+            title="Configure Page Break Logic Rules"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-slate-100 transition cursor-pointer"
+          >
+            <GitBranch className="w-3.5 h-3.5" />
+            <span>Logics</span>
+          </button>
+
+          {onTogglePin && (
+            <button
+              type="button"
+              onClick={onTogglePin}
+              title={isPinned ? "Unpin to floating window" : "Pin to sidebar"}
+              className={`p-1.5 rounded-md transition cursor-pointer ${
+                isPinned 
+                  ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' 
+                  : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={onClose}
+            title="Close Settings"
+            className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Body: Form Navigation, Page Attributes, Preview */}
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-6 text-xs text-slate-700 [scrollbar-width:thin] [scrollbar-color:#cbd5e1_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300 hover:[&::-webkit-scrollbar-thumb]:bg-slate-400 [&::-webkit-scrollbar-track]:bg-slate-50">
+        {/* SECTION 1: Form Navigation */}
+        <div className="space-y-3.5">
+          <span className="text-xs font-medium text-slate-400">
+            Form Navigation
+          </span>
+
+          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={field.showNavbar ?? true}
+              onChange={(e) => onUpdateField(field.id, { showNavbar: e.target.checked })}
+              className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600"
+            />
+            <span className="text-xs font-medium text-slate-700">
+              Show navbar on the form if multiple pages
+            </span>
+          </label>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1.5">
+              Navbar Name
+            </label>
+            <input
+              type="text"
+              value={field.navbarName ?? (effectivePageBreakNum === 1 ? 'Step 1' : `Step ${effectivePageBreakNum}`)}
+              placeholder={`Step ${effectivePageBreakNum}`}
+              onChange={(e) => onUpdateField(field.id, { navbarName: e.target.value })}
+              className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs"
+            />
+          </div>
+        </div>
+
+        {/* SECTION 2: Page Attributes */}
+        <div className="space-y-3.5 pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-400">
+              Page Attributes
+            </span>
+
+            {/* Alignment buttons */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => onUpdateField(field.id, { align: 'left' })}
+                title="Align Left"
+                className={`p-1.5 rounded text-xs transition cursor-pointer ${
+                  (field.align || 'left') === 'left'
+                    ? 'bg-[#1877f2] text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-700'
+                }`}
+              >
+                <AlignLeft className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateField(field.id, { align: 'center' })}
+                title="Align Center"
+                className={`p-1.5 rounded text-xs transition cursor-pointer ${
+                  field.align === 'center'
+                    ? 'bg-[#1877f2] text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-700'
+                }`}
+              >
+                <AlignCenter className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateField(field.id, { align: 'right' })}
+                title="Align Right"
+                className={`p-1.5 rounded text-xs transition cursor-pointer ${
+                  field.align === 'right'
+                    ? 'bg-[#1877f2] text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-700'
+                }`}
+              >
+                <AlignRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1.5">
+              Form Title
+            </label>
+            <input
+              type="text"
+              value={field.title ?? ''}
+              placeholder="Form Title"
+              onChange={(e) => onUpdateField(field.id, { title: e.target.value })}
+              className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1.5">
+              Help Text
+            </label>
+            <textarea
+              rows={3}
+              value={field.description ?? field.helperText ?? ''}
+              placeholder="Help text for this step or page"
+              onChange={(e) => onUpdateField(field.id, { description: e.target.value, helperText: e.target.value })}
+              className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs resize-none"
+            />
+          </div>
+
+          {/* Read-Only and Hidden Checkboxes matching Screenshot */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 pt-1">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={!!field.readOnly}
+                onChange={(e) => onUpdateField(field.id, { readOnly: e.target.checked })}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600"
+              />
+              <span className="text-xs text-slate-600">Read-Only page on the form</span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={!!field.hidden}
+                onChange={(e) => onUpdateField(field.id, { hidden: e.target.checked })}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600"
+              />
+              <span className="text-xs text-slate-600">Hidden page on the form</span>
+            </label>
+          </div>
+        </div>
+
+        {/* SECTION 3: Preview matching Screenshot */}
+        <div className="space-y-3 pt-2 border-t border-slate-100">
+          <div className="flex items-center gap-1.5 text-slate-500">
+            <Eye className="w-3.5 h-3.5 text-slate-600" />
+            <span className="text-xs font-medium text-slate-400">Preview</span>
+          </div>
+
+          <div className="p-4 sm:p-5 rounded-xl border border-dashed border-slate-300 bg-slate-50/50">
+            <div style={{ textAlign: field.align || 'left' }}>
+              <h4 className="text-sm sm:text-base font-bold text-slate-900 break-words mb-1">
+                {field.title || (effectivePageBreakNum === 1 ? 'Document Submission Form' : `Step ${effectivePageBreakNum} Details`)}
+              </h4>
+              {(field.description || field.helperText) && (
+                <p className="text-xs text-slate-500 leading-relaxed break-words">
+                  {field.description || field.helperText}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="p-4 px-5 border-t border-slate-200/90 bg-slate-50/60 flex items-center justify-between shrink-0">
+        {effectivePageBreakNum > 1 && field.id !== 'page_break_1' ? (
+          <button
+            type="button"
+            onClick={() => onDeleteField(field.id)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete Page Break</span>
+          </button>
+        ) : (
+          <div />
+        )}
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-5 py-1.5 bg-[#1877f2] hover:bg-blue-600 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer"
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  );
+
+  const isPageButtons = field.type === 'Page Buttons' || field.type === 'Submission Buttons';
+  const isSubmission = field.type === 'Submission Buttons';
+
+  const pageButtonsContent = (
+    <div className="flex flex-col h-full min-h-0 bg-white text-slate-700">
+      {/* Header: Page Buttons #66 / #0 */}
+      <div className="h-13 px-5 border-b border-slate-200/80 flex items-center justify-between shrink-0 bg-white">
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm font-bold text-slate-800">
+            Page Buttons
+          </span>
+          <span className="text-xs font-mono text-slate-400 font-normal">
+            #{field.id || (isSubmission ? '0' : '66')}
+          </span>
+        </div>
+
+        {/* Right Header Actions: Pin, Close */}
+        <div className="flex items-center gap-1.5">
+          {onTogglePin && (
+            <button
+              type="button"
+              onClick={onTogglePin}
+              title={isPinned ? "Unpin to floating window" : "Pin to sidebar"}
+              className={`p-1.5 rounded-md transition cursor-pointer ${
+                isPinned 
+                  ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' 
+                  : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={onClose}
+            title="Close Settings"
+            className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Body: Form Attributes, Preview */}
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-6 text-xs text-slate-700 [scrollbar-width:thin]">
+        {/* Form Attributes */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-400">
+              Form Attributes
+            </span>
+
+            {/* Alignment buttons */}
+            <div className="flex items-center bg-slate-100 p-0.5 rounded-md border border-slate-200">
+              <button
+                type="button"
+                onClick={() => onUpdateField(field.id, { buttonAlign: 'left' })}
+                title="Align Left"
+                className={`p-1.5 rounded text-xs transition cursor-pointer ${
+                  field.buttonAlign === 'left'
+                    ? 'bg-[#1877f2] text-white shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <AlignLeft className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateField(field.id, { buttonAlign: 'center' })}
+                title="Align Center"
+                className={`p-1.5 rounded text-xs transition cursor-pointer ${
+                  field.buttonAlign === 'center' || !field.buttonAlign
+                    ? 'bg-[#1877f2] text-white shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <AlignCenter className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateField(field.id, { buttonAlign: 'right' })}
+                title="Align Right"
+                className={`p-1.5 rounded text-xs transition cursor-pointer ${
+                  field.buttonAlign === 'right'
+                    ? 'bg-[#1877f2] text-white shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <AlignRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Button text inputs */}
+          {isSubmission ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="block text-xs font-normal text-slate-600">Previous Button</label>
+                <input
+                  type="text"
+                  value={field.prevButtonText ?? 'Back'}
+                  onChange={(e) => onUpdateField(field.id, { prevButtonText: e.target.value })}
+                  placeholder="Back"
+                  className="w-full bg-white border border-blue-500 ring-2 ring-blue-500/20 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none transition shadow-2xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-normal text-slate-600">Next Button</label>
+                <input
+                  type="text"
+                  value={field.nextButtonText ?? 'Submit'}
+                  onChange={(e) => onUpdateField(field.id, { nextButtonText: e.target.value, submitButtonText: e.target.value })}
+                  placeholder="Submit"
+                  className="w-full bg-white border border-slate-200 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none transition shadow-2xs"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <label className="block text-xs font-normal text-slate-600">Next Button</label>
+              <input
+                type="text"
+                value={field.nextButtonText ?? 'Continue'}
+                onChange={(e) => onUpdateField(field.id, { nextButtonText: e.target.value })}
+                placeholder="Continue"
+                className="w-full bg-white border border-blue-500 ring-2 ring-blue-500/20 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none transition shadow-2xs"
+              />
+            </div>
+          )}
+
+          {/* Button Help */}
+          <div className="space-y-1">
+            <label className="block text-xs font-normal text-slate-600">Button Help</label>
+            <input
+              type="text"
+              value={field.buttonHelp ?? ''}
+              onChange={(e) => onUpdateField(field.id, { buttonHelp: e.target.value })}
+              placeholder="Help Text"
+              className="w-full bg-white border border-slate-200 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-slate-800 placeholder:text-slate-300 focus:outline-none transition shadow-2xs"
+            />
+          </div>
+        </div>
+
+        {/* Preview matching Screenshot 2 & 3 */}
+        <div className="space-y-3 pt-4 border-t border-slate-100">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-slate-500">
+              <Eye className="w-3.5 h-3.5 text-slate-600" />
+              <span className="text-xs font-medium text-slate-400">Preview</span>
+            </div>
+
+            <div className="relative flex flex-col items-center">
+              <div className="bg-[#1877f2] text-white text-[10px] font-bold px-2.5 py-0.5 rounded shadow-sm tracking-wider uppercase">
+                FORM PREVIEW - READ ONLY
+              </div>
+              <div className="w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-[#1877f2]" />
+            </div>
+          </div>
+
+          <div className="p-8 rounded-xl border border-dashed border-slate-300 bg-slate-50/40">
+            <div className={`flex items-center gap-3 ${
+              field.buttonAlign === 'left' ? 'justify-start' :
+              field.buttonAlign === 'right' ? 'justify-end' :
+              'justify-center'
+            }`}>
+              {isSubmission && (
+                <button
+                  type="button"
+                  className="px-6 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 shadow-2xs transition"
+                >
+                  {field.prevButtonText || 'Back'}
+                </button>
+              )}
+              <button
+                type="button"
+                className="px-6 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 shadow-2xs transition"
+              >
+                {field.nextButtonText || (isSubmission ? 'Submit' : 'Continue')}
+              </button>
+            </div>
+            {field.buttonHelp && (
+              <p className="text-[11px] text-slate-400 mt-2 text-center">
+                {field.buttonHelp}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="p-4 px-5 border-t border-slate-200/90 bg-slate-50/60 flex items-center justify-end shrink-0">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-5 py-1.5 bg-[#1877f2] hover:bg-blue-600 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer"
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  );
+
+  const activeContent = isPageButtons
+    ? pageButtonsContent
+    : isPageBreak
+    ? pageBreakContent
+    : panelContent;
+
   // If PINNED: Render docked right-hand inspector panel
   if (isPinned) {
     return (
       <div className="w-[480px] xl:w-[560px] bg-white border-l border-slate-200 h-full min-h-0 flex flex-col shadow-xl z-30 shrink-0 animate-in slide-in-from-right duration-200">
-        {panelContent}
+        {activeContent}
       </div>
     );
   }
@@ -1363,7 +1808,7 @@ export default function FieldPropertiesPanel({
       }}
     >
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200/90 w-full max-w-2xl h-[86vh] max-h-[88vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
-        {panelContent}
+        {activeContent}
       </div>
     </div>
   );

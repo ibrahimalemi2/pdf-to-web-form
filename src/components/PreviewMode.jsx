@@ -24,6 +24,7 @@ import { computeDynamicFieldStates } from '../utils/logicEngine';
 export default function PreviewMode({
   formTitle = "Assignment Submission Form",
   formDescription = "Collects student assignment details and answers for parallel computing coursework.",
+  formMeta = {},
   fields = [],
   logicRules = [],
   documentName = "Assignment_1_F23-2353.pdf",
@@ -58,41 +59,65 @@ export default function PreviewMode({
     return computeDynamicFieldStates(fields, logicRules, formData);
   }, [fields, logicRules, formData]);
 
-  // Group fields into sequential steps divided by 'Section' or 'Divider' fields
+  // Group fields into sequential steps divided by 'Page Break', 'Section', or 'Divider' fields
   const steps = React.useMemo(() => {
     const rawList = [];
     let currentFields = [];
-    let currentTitle = formTitle || 'Part 1: General Details';
+    let currentTitle = formMeta?.title || formTitle || 'Part 1: General Details';
+    let currentDesc = formMeta?.description || formDescription || '';
+    let currentNav = formMeta?.navbarName || 'Step 1';
+    let currentShowNavbar = formMeta?.showNavbar ?? true;
+    let currentAlign = formMeta?.align || 'left';
+    let currentReadOnly = !!formMeta?.readOnly;
+    let currentHidden = !!formMeta?.hidden;
 
     fields.forEach((f) => {
       const isHidden = dynamicStates[f.id]?.hidden ?? f.hidden;
 
-      if (f.type === 'Section' || f.type === 'Divider') {
-        if (currentFields.length > 0 || rawList.length === 0) {
+      if (f.type === 'Page Break' || f.type === 'Section' || f.type === 'Divider') {
+        if (!currentHidden) {
           rawList.push({
             title: currentTitle,
-            label: currentTitle,
+            label: currentNav || currentTitle,
+            navbarName: currentNav,
+            showNavbar: currentShowNavbar,
+            description: currentDesc,
+            align: currentAlign,
+            readOnly: currentReadOnly,
             fields: currentFields,
             divider: f
           });
-          currentFields = [];
         }
-        currentTitle = f.label || `Part ${rawList.length + 1}`;
+        currentFields = [];
+        currentTitle = f.title || f.label || `Step ${rawList.length + 1} Details`;
+        currentDesc = f.description || f.helperText || '';
+        currentNav = f.navbarName || f.label || `Step ${rawList.length + 1}`;
+        currentShowNavbar = f.showNavbar ?? true;
+        currentAlign = f.align || 'left';
+        currentReadOnly = !!f.readOnly;
+        currentHidden = !!f.hidden;
       } else if (!isHidden) {
         currentFields.push(f);
       }
     });
 
-    rawList.push({
-      title: currentTitle,
-      label: currentTitle,
-      fields: currentFields,
-      divider: null
-    });
+    if (!currentHidden) {
+      rawList.push({
+        title: currentTitle,
+        label: currentNav || currentTitle,
+        navbarName: currentNav,
+        showNavbar: currentShowNavbar,
+        description: currentDesc,
+        align: currentAlign,
+        readOnly: currentReadOnly,
+        fields: currentFields,
+        divider: null
+      });
+    }
 
     const cleaned = rawList.filter((s, idx) => s.fields.length > 0 || idx === 0);
-    return cleaned.length > 0 ? cleaned : [{ title: formTitle, label: formTitle, fields: [], divider: null }];
-  }, [fields, formTitle, dynamicStates]);
+    return cleaned.length > 0 ? cleaned : [{ title: formTitle, label: formTitle, navbarName: 'Step 1', showNavbar: true, fields: [], divider: null }];
+  }, [fields, formTitle, formDescription, formMeta, dynamicStates]);
 
   const [currentStep, setCurrentStep] = useState(0);
   const safeStep = Math.min(currentStep, Math.max(0, steps.length - 1));
@@ -962,18 +987,22 @@ export default function PreviewMode({
           <div className="w-full max-w-3xl animate-in fade-in duration-200">
             {!isSubmitted ? (
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-8 sm:p-12 mb-4">
-                {/* Form Title */}
-                <h1 className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight mb-2">
-                  {cleanTitle}
-                </h1>
+                {/* Form Title & Description with step alignment */}
+                <div style={{ textAlign: steps[safeStep]?.align || 'left' }}>
+                  <h1 className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight mb-2">
+                    {steps[safeStep]?.title || cleanTitle}
+                  </h1>
 
-                {/* Form Subtitle / Description */}
-                <p className="text-xs sm:text-sm text-slate-500 leading-relaxed mb-6">
-                  {cleanDescription}
-                </p>
+                  {/* Form Subtitle / Description */}
+                  {(steps[safeStep]?.description || cleanDescription) && (
+                    <p className="text-xs sm:text-sm text-slate-500 leading-relaxed mb-6">
+                      {steps[safeStep]?.description || cleanDescription}
+                    </p>
+                  )}
+                </div>
 
-                {/* Multi-step progress indicator when divider lines are present */}
-                {steps.length > 1 && (
+                {/* Multi-step progress indicator when divider lines or page breaks are present */}
+                {steps.length > 1 && steps[safeStep]?.showNavbar !== false && (
                   <div className="mb-8 pb-5 border-b border-slate-100">
                     <div className="flex items-center justify-between mb-2.5">
                       <div className="flex items-center gap-2">
@@ -981,7 +1010,7 @@ export default function PreviewMode({
                           Step {safeStep + 1} of {steps.length}
                         </span>
                         <span className="text-sm font-bold text-slate-800">
-                          {steps[safeStep]?.label || `Step ${safeStep + 1}`}
+                          {steps[safeStep]?.navbarName || steps[safeStep]?.label || `Step ${safeStep + 1}`}
                         </span>
                       </div>
                       <span className="text-xs text-slate-400 font-medium">
@@ -1098,43 +1127,62 @@ export default function PreviewMode({
                     })}
                   </div>
 
-                  {/* Action buttons (Back / Next / Submit Application) */}
-                  <div className="pt-8 border-t border-slate-100 flex items-center justify-between gap-4">
-                    {safeStep > 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCurrentStep(prev => Math.max(0, prev - 1));
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        className="inline-flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-semibold text-xs sm:text-sm px-6 py-2.5 rounded-xl shadow-xs transition cursor-pointer active:scale-95"
-                      >
-                        <ArrowLeft className="w-4 h-4" />
-                        <span>Back</span>
-                      </button>
-                    ) : (
-                      <div />
-                    )}
+                  {/* Action buttons (Back / Next / Submit Application) matching PlatoForms customization */}
+                  {(() => {
+                    const isLastStep = safeStep === steps.length - 1;
+                    const divider = steps[safeStep]?.divider;
+                    const currentNextText = divider?.nextButtonText || formMeta?.nextButtonText || 'Continue';
+                    const currentPrevText = (isLastStep ? formMeta?.prevButtonText : divider?.prevButtonText) || formMeta?.prevButtonText || 'Back';
+                    const currentSubmitText = formMeta?.submitButtonText || 'Submit Application';
+                    const align = (isLastStep ? formMeta?.buttonAlign : divider?.buttonAlign) || formMeta?.buttonAlign || 'center';
+                    const helpText = isLastStep ? formMeta?.buttonHelp : divider?.buttonHelp;
 
-                    {safeStep < steps.length - 1 ? (
-                      <button
-                        type="button"
-                        onClick={handleNextStep}
-                        className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:from-blue-800 active:to-indigo-800 text-white font-semibold text-xs sm:text-sm px-8 py-2.5 rounded-xl shadow-md shadow-blue-500/25 transition cursor-pointer active:scale-95 ml-auto"
-                      >
-                        <span>Next</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
-                    ) : (
-                      <button
-                        type="submit"
-                        className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:from-blue-800 active:to-indigo-800 text-white font-semibold text-xs sm:text-sm px-8 py-2.5 rounded-xl shadow-md shadow-blue-500/25 transition cursor-pointer active:scale-95 ml-auto"
-                      >
-                        <span>Submit Application</span>
-                        <CheckCircle2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
+                    const justifyClass = align === 'left' ? 'justify-start' : align === 'right' ? 'justify-end' : 'justify-center';
+
+                    return (
+                      <div className="pt-8 border-t border-slate-100 flex flex-col items-center">
+                        <div className={`w-full flex items-center gap-4 ${justifyClass}`}>
+                          {safeStep > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCurrentStep(prev => Math.max(0, prev - 1));
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }}
+                              className="inline-flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-semibold text-xs sm:text-sm px-6 py-2.5 rounded-xl shadow-xs transition cursor-pointer active:scale-95"
+                            >
+                              <ArrowLeft className="w-4 h-4" />
+                              <span>{currentPrevText}</span>
+                            </button>
+                          )}
+
+                          {!isLastStep ? (
+                            <button
+                              type="button"
+                              onClick={handleNextStep}
+                              className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:from-blue-800 active:to-indigo-800 text-white font-semibold text-xs sm:text-sm px-8 py-2.5 rounded-xl shadow-md shadow-blue-500/25 transition cursor-pointer active:scale-95"
+                            >
+                              <span>{currentNextText}</span>
+                              <ArrowRight className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <button
+                              type="submit"
+                              className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:from-blue-800 active:to-indigo-800 text-white font-semibold text-xs sm:text-sm px-8 py-2.5 rounded-xl shadow-md shadow-blue-500/25 transition cursor-pointer active:scale-95"
+                            >
+                              <span>{currentSubmitText}</span>
+                              <CheckCircle2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                        {helpText && (
+                          <p className="text-[11px] text-slate-400 mt-2 text-center">
+                            {helpText}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </form>
               </div>
             ) : (

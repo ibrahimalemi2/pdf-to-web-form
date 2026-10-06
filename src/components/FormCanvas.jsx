@@ -13,6 +13,7 @@ import {
   Check,
   HelpCircle,
   ChevronRight,
+  ChevronLeft,
   Plus,
   ArrowUp,
   ArrowDown,
@@ -37,9 +38,18 @@ import {
   GitBranch,
   X
 } from 'lucide-react';
+import { PageBreakIcon } from './SidebarTools';
 
 // Component metadata with rich titles, descriptions, and color tokens for hover identification
 const FIELD_TYPE_INFO = {
+  'Page Break': {
+    label: 'Page Break (Multi-Step Form)',
+    shortName: 'Page Break',
+    desc: 'Splits form into sequential pages with Next/Back navigation buttons in preview',
+    icon: PageBreakIcon,
+    badgeClass: 'text-blue-700 bg-blue-50 border-blue-200',
+    iconColor: 'text-blue-600'
+  },
   'Short Text': {
     label: 'Single-Line Text Box',
     shortName: 'Text Box',
@@ -137,6 +147,7 @@ export default function FormCanvas({
   totalSteps = 2,
   formTitle = "Document Submission Form",
   formDescription = "Complete the required fields below. Responses are dynamically synchronized with your official document.",
+  formMeta = {},
   onUpdateFormMeta = () => {},
   detectedBackendFields = [],
   hoveredFieldId = null,
@@ -165,7 +176,7 @@ export default function FormCanvas({
     const map = {};
     let currentStep = 1;
     fields.forEach((f) => {
-      if (f.type === 'Section' || f.type === 'Divider') {
+      if (f.type === 'Page Break' || f.type === 'Section' || f.type === 'Divider') {
         currentStep++;
         map[f.id] = currentStep;
       } else {
@@ -174,6 +185,128 @@ export default function FormCanvas({
     });
     return map;
   }, [fields]);
+
+  // Compute pages list
+  const pages = React.useMemo(() => {
+    const list = [
+      {
+        id: 'page_break_1',
+        pageNum: 1,
+        isFirst: true,
+        navbarName: formMeta?.navbarName || 'Step 1',
+        showNavbar: formMeta?.showNavbar ?? true,
+        title: formMeta?.title || formTitle,
+        description: formMeta?.description || formDescription,
+        align: formMeta?.align || 'left',
+        readOnly: !!formMeta?.readOnly,
+        hidden: !!formMeta?.hidden,
+        nextButtonText: formMeta?.nextButtonText || 'Continue',
+        prevButtonText: formMeta?.prevButtonText || 'Back',
+        buttonAlign: formMeta?.buttonAlign || 'center',
+        buttonHelp: formMeta?.buttonHelp || '',
+        fields: []
+      }
+    ];
+
+    let currIdx = 0;
+    fields.forEach((f) => {
+      if (f.type === 'Page Break' || f.type === 'Section' || f.type === 'Divider') {
+        currIdx++;
+        list.push({
+          id: f.id,
+          pageNum: currIdx + 1,
+          isFirst: false,
+          navbarName: f.navbarName || f.label || `Step ${currIdx + 1}`,
+          showNavbar: f.showNavbar ?? true,
+          title: f.title || f.label || `Step ${currIdx + 1} Details`,
+          description: f.description || f.helperText || '',
+          align: f.align || 'left',
+          readOnly: !!f.readOnly,
+          hidden: !!f.hidden,
+          nextButtonText: f.nextButtonText || 'Continue',
+          prevButtonText: f.prevButtonText || 'Back',
+          buttonAlign: f.buttonAlign || 'center',
+          buttonHelp: f.buttonHelp || '',
+          fieldRef: f,
+          fields: []
+        });
+      } else {
+        list[currIdx].fields.push(f);
+      }
+    });
+
+    return list;
+  }, [fields, formMeta, formTitle, formDescription]);
+
+  const [activeCanvasPage, setActiveCanvasPage] = useState(1);
+
+  const scrollToSheet = (pNum) => {
+    setActiveCanvasPage(pNum);
+    const el = document.getElementById(`form-sheet-${pNum}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  // Observe sheet cards to update active page indicator in bottom pill
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const num = parseInt(entry.target.getAttribute('data-sheet-page'), 10);
+            if (!isNaN(num)) {
+              setActiveCanvasPage(num);
+            }
+          }
+        });
+      },
+      { threshold: 0.25 }
+    );
+
+    pages.forEach((p) => {
+      const el = document.getElementById(`form-sheet-${p.pageNum}`);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [pages]);
+
+  // Auto-switch page and scroll when field or button from another page is selected
+  useEffect(() => {
+    if (!selectedFieldId) return;
+    if (selectedFieldId === 'page_break_1') {
+      scrollToSheet(1);
+      return;
+    }
+    if (selectedFieldId === 'submission_buttons') {
+      scrollToSheet(pages.length);
+      return;
+    }
+    if (selectedFieldId.startsWith('page_buttons_')) {
+      const breakId = selectedFieldId.replace('page_buttons_', '');
+      const pIdx = pages.findIndex(p => p.id === breakId);
+      if (pIdx > 0) {
+        scrollToSheet(pIdx);
+      }
+      return;
+    }
+    const pageIdx = pages.findIndex(p => p.id === selectedFieldId || p.fields.some(f => f.id === selectedFieldId));
+    if (pageIdx !== -1) {
+      setActiveCanvasPage(pageIdx + 1);
+    }
+  }, [selectedFieldId, pages]);
+
+  const safeActivePage = Math.min(Math.max(1, activeCanvasPage), Math.max(1, pages.length));
+
+  const getInsertIndexForPage = (pageIdx) => {
+    if (pageIdx >= pages.length - 1) {
+      return fields.length;
+    }
+    const nextPage = pages[pageIdx + 1];
+    const breakIndex = fields.findIndex(f => f.id === nextPage.id);
+    return breakIndex >= 0 ? breakIndex : fields.length;
+  };
 
   // Quick component type switcher dropdown state
   const [openTypeChooserId, setOpenTypeChooserId] = useState(null);
@@ -548,6 +681,319 @@ export default function FormCanvas({
     }
   };
 
+  const renderFieldItem = (field, index) => {
+    const isSelected = selectedFieldId === field.id;
+    const isEditingThisLabel = editingLabelId === field.id;
+    const isFullWidth = field.columnSpan === 2 ||
+      field.type === 'Long Text' ||
+      field.type === 'Section' ||
+      field.type === 'Header' ||
+      field.type === 'File Upload';
+
+    const typeInfo = FIELD_TYPE_INFO[field.type] || FIELD_TYPE_INFO['Short Text'];
+    const TypeIcon = typeInfo.icon;
+    const isBeingDragged = draggedIndex === index;
+    const isDropTarget = dropTargetIndex === index;
+
+    return (
+      <div
+        key={field.id}
+        data-field-id={field.id}
+        draggable
+        onDragStart={(e) => handleDragStart(e, index)}
+        onDragOver={(e) => handleDragOver(e, index)}
+        onDrop={(e) => handleDrop(e, index)}
+        onDragEnd={handleDragEnd}
+        onClick={() => {
+          if (justDraggedRef.current) return;
+          onSelectField(field.id);
+        }}
+        onContextMenu={(e) => handleContextMenu(e, field, index)}
+        onMouseEnter={() => {
+          onHoverField?.(field.id);
+          setHoveredCardId(field.id);
+        }}
+        onMouseLeave={() => {
+          onHoverField?.(null);
+          setHoveredCardId(null);
+        }}
+        title={`Box #${index + 1}: ${field.label} • Type: ${typeInfo.label} (${typeInfo.desc})`}
+        className={`relative group rounded-xl p-4 border transition-all duration-150 cursor-pointer ${
+          isFullWidth ? 'sm:col-span-2' : 'sm:col-span-1'
+        } ${
+          isBeingDragged
+            ? 'opacity-40 border-dashed border-blue-400 scale-[0.98]'
+            : isDropTarget
+            ? 'border-blue-500 bg-blue-50/40 ring-2 ring-blue-500/30'
+            : isSelected
+            ? 'border-2 border-blue-500 bg-white shadow-xs'
+            : hoveredFieldId === field.id || hoveredCardId === field.id
+            ? 'border border-blue-400 bg-blue-50/15'
+            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/40'
+        } ${field.hidden ? 'opacity-50 border-dashed' : ''}`}
+      >
+        {/* Right Edge Anchor Pin for SVG connector lines */}
+        {(isSelected || hoveredFieldId === field.id || hoveredCardId === field.id) && (
+          <div
+            data-field-anchor={field.id}
+            className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 border-blue-500 bg-white z-30 pointer-events-none shadow-xs"
+          />
+        )}
+
+        {/* Floating Top Action Toolbar on Hover or Selected */}
+        <div
+          className={`absolute -top-3.5 left-2 sm:left-3 z-30 flex items-center gap-0.5 bg-white/95 backdrop-blur-md border border-slate-200 shadow-md shadow-slate-900/10 rounded-xl px-1.5 py-0.5 transition-all duration-150 ${
+            isSelected ? 'opacity-100 scale-100' : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-100'
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Take to Top / First */}
+          <button
+            type="button"
+            disabled={index === 0}
+            onClick={() => onMoveField(field.id, 'first')}
+            title="Take to 1st (Top Position)"
+            className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-25 cursor-pointer transition active:scale-90"
+          >
+            <ChevronsUp className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Move Up One Step */}
+          <button
+            type="button"
+            disabled={index === 0}
+            onClick={() => onMoveField(field.id, 'up')}
+            title="Move Up One Position"
+            className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-25 cursor-pointer transition active:scale-90"
+          >
+            <ArrowUp className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Move Down One Step */}
+          <button
+            type="button"
+            disabled={index === fields.length - 1}
+            onClick={() => onMoveField(field.id, 'down')}
+            title="Move Down One Position"
+            className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-25 cursor-pointer transition active:scale-90"
+          >
+            <ArrowDown className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Take to Bottom / Last */}
+          <button
+            type="button"
+            disabled={index === fields.length - 1}
+            onClick={() => onMoveField(field.id, 'last')}
+            title="Take to Last (Bottom Position)"
+            className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-25 cursor-pointer transition active:scale-90"
+          >
+            <ChevronsDown className="w-3.5 h-3.5" />
+          </button>
+
+          <div className="w-px h-3 bg-slate-200 mx-0.5" />
+
+          {/* Required Asterisk Toggle */}
+          <button
+            type="button"
+            onClick={() => onUpdateField(field.id, { required: !field.required })}
+            title={field.required ? 'Make Optional' : 'Make Required'}
+            className={`p-1 rounded transition cursor-pointer ${
+              field.required ? 'text-amber-600 bg-amber-50 font-bold' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <Asterisk className="w-3.5 h-3.5 stroke-[2.5]" />
+          </button>
+
+          {/* Lock / Read-Only Toggle */}
+          <button
+            type="button"
+            onClick={() => onUpdateField(field.id, { readOnly: !field.readOnly })}
+            title={field.readOnly ? 'Make Editable' : 'Lock as Read-Only'}
+            className={`p-1 rounded transition cursor-pointer ${
+              field.readOnly ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            {field.readOnly ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+          </button>
+
+          {/* Quick Column Span toggle */}
+          <button
+            type="button"
+            onClick={() => onUpdateField(field.id, { columnSpan: field.columnSpan === 2 ? 1 : 2 })}
+            title={field.columnSpan === 2 ? 'Switch to Half Width (1 Col)' : 'Expand to Full Width (2 Cols)'}
+            className={`p-1 rounded transition cursor-pointer ${
+              field.columnSpan === 2 ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <Columns className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Duplicate Field */}
+          <button
+            type="button"
+            onClick={() => onDuplicateField(field.id)}
+            title="Duplicate Box"
+            className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+          >
+            <Copy className="w-3.5 h-3.5" />
+          </button>
+
+          <div className="w-px h-3 bg-slate-200 mx-0.5" />
+
+          {/* Settings / Open Property Panel */}
+          <button
+            type="button"
+            onClick={() => onSelectField(field.id)}
+            title="Open Field Settings"
+            className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 cursor-pointer"
+          >
+            <Settings className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Delete Field */}
+          <button
+            type="button"
+            onClick={() => onDeleteField(field.id)}
+            title="Delete Box"
+            className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Card Header matching PlatoForms screenshot */}
+        <div className="flex items-center justify-between mb-2 select-none">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {/* Drag Handle */}
+            <div
+              title="Drag box anywhere on canvas"
+              className="cursor-grab active:cursor-grabbing p-1 -ml-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GripVertical className="w-3.5 h-3.5" />
+            </div>
+
+            {/* Editable Label */}
+            {isEditingThisLabel ? (
+              <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="text"
+                  value={labelDraft}
+                  onChange={(e) => setLabelDraft(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && saveLabelEdit(field.id)}
+                  autoFocus
+                  className="text-xs font-semibold text-slate-800 border-b border-blue-500 bg-white px-1.5 py-0.5 rounded focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => saveLabelEdit(field.id)}
+                  className="text-blue-600 hover:text-blue-800 p-0.5 cursor-pointer"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div
+                onClick={(e) => startLabelEdit(field, e)}
+                title="Double click to edit label"
+                className="flex items-center gap-1.5 cursor-text group/label truncate max-w-[200px] sm:max-w-[260px]"
+              >
+                <span className="text-xs font-semibold text-slate-700 hover:text-blue-600 transition-colors truncate">
+                  {field.label}
+                </span>
+                <Edit2 className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover/label:opacity-100 transition-opacity shrink-0" />
+                {field.required && (
+                  <span className="text-red-500 font-bold text-xs shrink-0">*</span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Right badge: Type Icon + Type dropdown selector */}
+          <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setOpenTypeChooserId(openTypeChooserId === field.id ? null : field.id)}
+                title="Switch component type"
+                className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md border transition cursor-pointer ${typeInfo.badgeClass} hover:brightness-95`}
+              >
+                <TypeIcon className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">{typeInfo.shortName}</span>
+                <ChevronDown className="w-2.5 h-2.5 opacity-60 ml-0.5" />
+              </button>
+
+              {openTypeChooserId === field.id && (
+                <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-50 text-xs">
+                  <div className="px-3 py-1 font-bold text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                    Switch Component Type
+                  </div>
+                  {['Short Text', 'Long Text', 'Dropdown', 'Date', 'Checkbox', 'Signature', 'File Upload'].map(tKey => {
+                    const info = FIELD_TYPE_INFO[tKey];
+                    const TIcon = info.icon;
+                    return (
+                      <button
+                        key={tKey}
+                        type="button"
+                        onClick={() => handleChangeFieldType(field.id, tKey)}
+                        className={`w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center gap-2 cursor-pointer ${
+                          field.type === tKey ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-700'
+                        }`}
+                      >
+                        <TIcon className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{info.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* PDF Page Sync Link indicator */}
+            <div
+              title={`Dynamic sync enabled: bound to PDF Page ${field.pdfMapping?.page || 1}`}
+              className="hidden sm:flex items-center gap-1 text-[10px] font-mono font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/60"
+            >
+              <Link2 className="w-2.5 h-2.5" />
+              <span>PDF P{field.pdfMapping?.page || 1}</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteField(field.id);
+              }}
+              title="Delete Field"
+              className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-0.5 rounded transition cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Input Preview Body */}
+        {renderFieldInputPreview(field)}
+
+        {/* Helper text / Status Badges */}
+        <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-100 pt-1.5">
+          <span className="truncate max-w-[200px]" title={typeInfo.label}>
+            {field.helperText || typeInfo.label}
+          </span>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-[10px] font-mono text-slate-400">
+              #{index + 1}
+            </span>
+            {field.required && <span className="text-amber-600 font-semibold text-[10px]">Required</span>}
+            {field.readOnly && <span className="text-blue-600 font-semibold text-[10px]">Locked</span>}
+            {field.hidden && <span className="text-rose-500 font-semibold text-[10px]">Hidden</span>}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <main className="flex-1 bg-slate-50/80 overflow-y-auto p-4 sm:p-8 flex flex-col items-center justify-start relative">
       {/* Floating Black Pill Banner over Canvas */}
@@ -606,21 +1052,24 @@ export default function FormCanvas({
       </div>
 
       {/* Top canvas toolbar / helper breadcrumb */}
-      <div className="w-full max-w-2xl mb-4 flex items-center justify-between text-xs text-slate-500">
+      <div className="w-full max-w-2xl mb-4 flex items-center justify-between text-xs text-slate-500 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700">
             Form Canvas Editor
           </span>
           <span className="text-slate-400">•</span>
           <span className="font-medium text-slate-700">{fields.length} dynamic fields</span>
-          <span className="text-slate-400 hidden sm:inline">•</span>
-          <span className="text-slate-400 hidden sm:inline text-[11px]">
-            Drag handles or use ⏫ / ⏬ to reorder to 1st, 2nd, or last
-          </span>
+          {pages.length > 1 && (
+            <>
+              <span className="text-slate-400">•</span>
+              <span className="font-semibold text-blue-600">{pages.length} Pages (Multi-Step)</span>
+            </>
+          )}
         </div>
 
-        {/* Connector line toggle button */}
+        {/* Connector line toggle */}
         <div className="flex items-center gap-2">
+
           <button
             type="button"
             onClick={onToggleConnectors}
@@ -636,670 +1085,314 @@ export default function FormCanvas({
         </div>
       </div>
 
-      {/* Central Form Card */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200/90 max-w-2xl w-full p-6 sm:p-10 transition-all duration-200 mb-8 relative">
-        {/* Shimmer overlay while scanning */}
-        {isAiScanning && (
-          <div className="absolute inset-0 bg-blue-500/5 backdrop-blur-[1px] rounded-2xl z-20 flex flex-col items-center justify-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 animate-bounce">
-              <Sparkles className="w-5 h-5 text-cyan-200" />
-            </div>
-            <div className="text-xs font-bold text-slate-800 bg-white px-3 py-1.5 rounded-full border border-blue-200 shadow-md">
-              {aiScanStatus}
-            </div>
-          </div>
-        )}
+      {/* Stacked Sheet Cards matching PlatoForms continuous canvas */}
+      {pages.map((page, pIdx) => {
+        const isLastPage = pIdx === pages.length - 1;
+        const pageNumber = page.pageNum || pIdx + 1;
+        const isSelectedPage = selectedFieldId === page.id || (selectedFieldId === 'page_break_1' && pIdx === 0);
+        const nextPageBreakField = pages[pIdx + 1];
+        const pageButtonId = nextPageBreakField ? `page_buttons_${nextPageBreakField.id}` : null;
+        const isPageButtonSelected = selectedFieldId === pageButtonId;
+        const isSubmissionSelected = selectedFieldId === 'submission_buttons';
 
-        {/* Step Indicator Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-5 mb-6">
-          <div className="flex items-center gap-2">
-            <span className="bg-blue-50 text-blue-700 text-xs font-bold px-2.5 py-1 rounded-md border border-blue-200">
-              {totalSteps > 1 ? `Multi-Step Form: ${totalSteps} Steps` : 'Step 1 of 1'}
-            </span>
-            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">
-              {isTemplateMatch ? 'Template Matched (100% Precision)' : aiScanComplete ? 'Auto-Detected Form' : (formTitle || 'Document Form')}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            {Array.from({ length: Math.max(1, totalSteps) }).map((_, i) => (
-              <div
-                key={i}
-                title={`Step ${i + 1}`}
-                className={`w-2 h-2 rounded-full ${i === 0 ? 'bg-blue-600' : 'bg-indigo-300'}`}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Form Title & Description */}
-        <div className="mb-8 group relative">
-          {isEditingTitle ? (
-            <div className="space-y-2 mb-2">
-              <input
-                type="text"
-                value={titleDraft}
-                onChange={(e) => setTitleDraft(e.target.value)}
-                onBlur={() => {
-                  if (titleDraft.trim()) onUpdateFormMeta({ title: titleDraft.trim() });
-                  setIsEditingTitle(false);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    if (titleDraft.trim()) onUpdateFormMeta({ title: titleDraft.trim() });
-                    setIsEditingTitle(false);
-                  }
-                }}
-                autoFocus
-                className="text-2xl font-bold text-slate-900 border-b-2 border-blue-500 focus:outline-none w-full bg-transparent"
-              />
-            </div>
-          ) : (
-            <h1
-              onClick={() => {
-                setTitleDraft(formTitle);
-                setIsEditingTitle(true);
-              }}
-              title="Click to edit form title"
-              className="text-2xl font-bold text-slate-900 tracking-tight mb-2 hover:text-blue-600 transition-colors cursor-pointer flex items-center gap-2"
-            >
-              <span>{formTitle}</span>
-              <Edit2 className="w-4 h-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </h1>
-          )}
-          <p className="text-sm text-slate-500 leading-relaxed">
-            {formDescription}
-          </p>
-        </div>
-
-        {/* Dynamic Fields Grid with Drag-and-Drop and Position Jumps */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {fields.map((field, index) => {
-            const isSelected = selectedFieldId === field.id;
-            const isEditingThisLabel = editingLabelId === field.id;
-            const isFullWidth = field.columnSpan === 2 ||
-              field.type === 'Long Text' ||
-              field.type === 'Section' ||
-              field.type === 'Header' ||
-              field.type === 'File Upload';
-
-            const typeInfo = FIELD_TYPE_INFO[field.type] || FIELD_TYPE_INFO['Short Text'];
-            const TypeIcon = typeInfo.icon;
-            const isBeingDragged = draggedIndex === index;
-            const isDropTarget = dropTargetIndex === index;
-            const isDivider = field.type === 'Section' || field.type === 'Divider';
-
-            if (isDivider) {
-              const stepNumber = fieldStepNumbers[field.id] || 2;
-              return (
-                <div
-                  key={field.id}
-                  data-field-id={field.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, index)}
-                  onDragOver={(e) => handleDragOver(e, index)}
-                  onDrop={(e) => handleDrop(e, index)}
-                  onDragEnd={handleDragEnd}
-                  onClick={() => {
-                    if (justDraggedRef.current) return;
-                    onSelectField(field.id);
-                  }}
-                  onContextMenu={(e) => handleContextMenu(e, field, index)}
-                  title={`Divider Line (Page Break): Splits form into Step ${stepNumber}. Drag or use toolbar to place anywhere.`}
-                  className={`relative group col-span-1 sm:col-span-2 my-2.5 rounded-2xl transition-all duration-150 cursor-pointer ${
-                    isBeingDragged
-                      ? 'opacity-40 border-2 border-dashed border-indigo-400 scale-[0.98]'
-                      : isDropTarget
-                      ? 'border-2 border-indigo-500 bg-indigo-50/60 ring-4 ring-indigo-500/20'
-                      : isSelected
-                      ? 'border-2 border-indigo-600 bg-indigo-50/40 shadow-md ring-2 ring-indigo-500/20'
-                      : 'border-2 border-dashed border-indigo-300 hover:border-indigo-400 bg-gradient-to-r from-indigo-50/50 via-white to-indigo-50/50 hover:bg-indigo-50/70'
-                  }`}
-                >
-                  {/* Floating Action Toolbar on Hover or Selected */}
-                  <div
-                    className={`absolute -top-3.5 right-3 z-30 flex items-center gap-0.5 bg-white/95 backdrop-blur-md border border-slate-200 shadow-md shadow-slate-900/10 rounded-xl px-1.5 py-0.5 transition-all duration-150 ${
-                      isSelected ? 'opacity-100 scale-100' : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-100'
-                    }`}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      type="button"
-                      disabled={index === 0}
-                      onClick={() => onMoveField(field.id, 'first')}
-                      title="Take to 1st (Top)"
-                      className="p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 disabled:opacity-25 cursor-pointer"
-                    >
-                      <ChevronsUp className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={index === 0}
-                      onClick={() => onMoveField(field.id, 'up')}
-                      title="Move Up One Position"
-                      className="p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 disabled:opacity-25 cursor-pointer"
-                    >
-                      <ArrowUp className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={index === fields.length - 1}
-                      onClick={() => onMoveField(field.id, 'down')}
-                      title="Move Down One Position"
-                      className="p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 disabled:opacity-25 cursor-pointer"
-                    >
-                      <ArrowDown className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={index === fields.length - 1}
-                      onClick={() => onMoveField(field.id, 'last')}
-                      title="Take to Last (Bottom)"
-                      className="p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 disabled:opacity-25 cursor-pointer"
-                    >
-                      <ChevronsDown className="w-3.5 h-3.5" />
-                    </button>
-                    <div className="w-px h-3 bg-slate-200 mx-0.5" />
-                    <button
-                      type="button"
-                      onClick={() => onDeleteField(field.id)}
-                      title="Delete Divider Line"
-                      className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  <div className="px-4 py-3 sm:px-6 sm:py-3.5 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        title="Drag handle: drag divider line to place between any boxes"
-                        className="cursor-grab active:cursor-grabbing p-1 hover:bg-indigo-100/60 rounded text-indigo-400 hover:text-indigo-600 transition-colors shrink-0"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <GripVertical className="w-4 h-4" />
-                      </div>
-
-                      <div className="flex items-center gap-2.5 flex-wrap">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-600 text-white shadow-xs shrink-0">
-                          <SeparatorHorizontal className="w-3.5 h-3.5" />
-                          <span>Step {stepNumber} Starts Here</span>
-                        </span>
-                        <span className="hidden sm:inline text-slate-300">•</span>
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          {isEditingThisLabel ? (
-                            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                              <input
-                                type="text"
-                                value={labelDraft}
-                                onChange={(e) => setLabelDraft(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && saveLabelEdit(field.id)}
-                                autoFocus
-                                className="text-xs font-semibold text-slate-800 border-b border-indigo-500 bg-white px-2 py-0.5 rounded focus:outline-none"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => saveLabelEdit(field.id)}
-                                className="text-indigo-600 hover:text-indigo-800 p-0.5 cursor-pointer"
-                              >
-                                <Check className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div
-                              onClick={(e) => startLabelEdit(field, e)}
-                              title="Click to rename step"
-                              className="flex items-center gap-1.5 cursor-text group/label truncate"
-                            >
-                              <span className="text-xs font-bold text-slate-800 hover:text-indigo-600 transition-colors">
-                                {field.label || `Step ${stepNumber} Details`}
-                              </span>
-                              <Edit2 className="w-3 h-3 text-slate-400 opacity-0 group-hover/label:opacity-100 transition-opacity shrink-0" />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="hidden md:inline text-[11px] text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-md font-medium border border-indigo-100">
-                        In Preview: advances with "Next" button
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeleteField(field.id);
-                        }}
-                        title="Remove Divider Line"
-                        className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded transition cursor-pointer"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
+        return (
+          <div
+            key={page.id}
+            id={`form-sheet-${pageNumber}`}
+            data-sheet-page={pageNumber}
+            className={`bg-white rounded-2xl shadow-sm border transition-all duration-200 mb-8 max-w-2xl w-full p-6 sm:p-10 relative ${
+              isSelectedPage
+                ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-md'
+                : 'border-slate-200/90 hover:border-slate-300'
+            } ${page.hidden ? 'opacity-60 border-dashed' : ''}`}
+          >
+            {/* Shimmer overlay on sheet 1 while scanning */}
+            {pIdx === 0 && isAiScanning && (
+              <div className="absolute inset-0 bg-blue-500/5 backdrop-blur-[1px] rounded-2xl z-20 flex flex-col items-center justify-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 animate-bounce">
+                  <Sparkles className="w-5 h-5 text-cyan-200" />
                 </div>
-              );
-            }
+                <div className="text-xs font-bold text-slate-800 bg-white px-3 py-1.5 rounded-full border border-blue-200 shadow-md">
+                  {aiScanStatus}
+                </div>
+              </div>
+            )}
 
-            return (
+            {/* Step Header matching PlatoForms Screenshot 1 */}
+            {pIdx === 0 ? (
               <div
-                key={field.id}
-                data-field-id={field.id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDrop={(e) => handleDrop(e, index)}
-                onDragEnd={handleDragEnd}
-                onClick={() => {
-                  if (justDraggedRef.current) return;
-                  onSelectField(field.id);
-                }}
-                onContextMenu={(e) => handleContextMenu(e, field, index)}
-                onMouseEnter={() => {
-                  onHoverField?.(field.id);
-                  setHoveredCardId(field.id);
-                }}
-                onMouseLeave={() => {
-                  onHoverField?.(null);
-                  setHoveredCardId(null);
-                }}
-                title={`Box #${index + 1}: ${field.label} • Type: ${typeInfo.label} (${typeInfo.desc}) • Right-click or use toolbar to take to 1st, 2nd, or Last`}
-                className={`relative group rounded-xl p-4 border transition-all duration-150 cursor-pointer ${
-                  isFullWidth ? 'sm:col-span-2' : 'sm:col-span-1'
-                } ${
-                  isBeingDragged
-                    ? 'opacity-40 border-dashed border-blue-400 scale-[0.98]'
-                    : isDropTarget
-                    ? 'border-blue-500 bg-blue-50/40 ring-2 ring-blue-500/30'
-                    : isSelected
-                    ? 'border-2 border-blue-500 bg-white shadow-xs'
-                    : hoveredFieldId === field.id || hoveredCardId === field.id
-                    ? 'border border-blue-400 bg-blue-50/15'
-                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/40'
-                } ${field.hidden ? 'opacity-50 border-dashed' : ''}`}
+                onClick={() => onSelectField('page_break_1')}
+                className={`mb-6 p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer select-none group/stepHeader ${
+                  selectedFieldId === 'page_break_1'
+                    ? 'border-blue-500 bg-blue-50/20 ring-2 ring-blue-500/20 shadow-xs'
+                    : 'border-slate-200/80 hover:border-blue-300 bg-slate-50/30'
+                }`}
               >
-                {/* Right Edge Anchor Pin matching PlatoForms Pic 2 */}
-                {(isSelected || hoveredFieldId === field.id || hoveredCardId === field.id) && (
-                  <div
-                    data-field-anchor={field.id}
-                    className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 border-blue-500 bg-white z-30 pointer-events-none shadow-xs"
-                  />
-                )}
-                {/* Floating Top Action Toolbar on Hover or Selected */}
-                <div
-                  className={`absolute -top-3.5 left-2 sm:left-3 z-30 flex items-center gap-0.5 bg-white/95 backdrop-blur-md border border-slate-200 shadow-md shadow-slate-900/10 rounded-xl px-1.5 py-0.5 transition-all duration-150 ${
-                    isSelected ? 'opacity-100 scale-100' : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-100'
-                  }`}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {/* Take to Top / First (⏫) */}
-                  <button
-                    type="button"
-                    disabled={index === 0}
-                    onClick={() => onMoveField(field.id, 'first')}
-                    title="Take to 1st (Top Position)"
-                    className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-25 cursor-pointer transition active:scale-90"
-                  >
-                    <ChevronsUp className="w-3.5 h-3.5" />
-                  </button>
-
-                  {/* Move Up One Step (↑) */}
-                  <button
-                    type="button"
-                    disabled={index === 0}
-                    onClick={() => onMoveField(field.id, 'up')}
-                    title="Move Up One Position"
-                    className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-25 cursor-pointer transition active:scale-90"
-                  >
-                    <ArrowUp className="w-3.5 h-3.5" />
-                  </button>
-
-                  {/* Move Down One Step (↓) */}
-                  <button
-                    type="button"
-                    disabled={index === fields.length - 1}
-                    onClick={() => onMoveField(field.id, 'down')}
-                    title="Move Down One Position"
-                    className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-25 cursor-pointer transition active:scale-90"
-                  >
-                    <ArrowDown className="w-3.5 h-3.5" />
-                  </button>
-
-                  {/* Take to Bottom / Last (⏬) */}
-                  <button
-                    type="button"
-                    disabled={index === fields.length - 1}
-                    onClick={() => onMoveField(field.id, 'last')}
-                    title="Take to Last (Bottom Position)"
-                    className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-25 cursor-pointer transition active:scale-90"
-                  >
-                    <ChevronsDown className="w-3.5 h-3.5" />
-                  </button>
-
-                  <div className="w-px h-3 bg-slate-200 mx-0.5" />
-
-                  {/* Required Asterisk Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => onUpdateField(field.id, { required: !field.required })}
-                    title={field.required ? 'Make Optional' : 'Make Required'}
-                    className={`p-1 rounded transition cursor-pointer ${
-                      field.required ? 'text-amber-600 bg-amber-50 font-bold' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    <Asterisk className="w-3 h-3" />
-                  </button>
-
-                  {/* Read-Only Lock Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => onUpdateField(field.id, { readOnly: !field.readOnly })}
-                    title={field.readOnly ? 'Make Editable' : 'Make Read-Only'}
-                    className={`p-1 rounded transition cursor-pointer ${
-                      field.readOnly ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    {field.readOnly ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
-                  </button>
-
-                  {/* Hidden Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => onUpdateField(field.id, { hidden: !field.hidden })}
-                    title={field.hidden ? 'Show Field' : 'Hide Field'}
-                    className={`p-1 rounded transition cursor-pointer ${
-                      field.hidden ? 'text-rose-600 bg-rose-50' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    {field.hidden ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                  </button>
-
-                  {/* Width Toggle (Half / Full) */}
-                  <button
-                    type="button"
-                    onClick={() => onUpdateField(field.id, { columnSpan: field.columnSpan === 2 ? 1 : 2 })}
-                    title={field.columnSpan === 2 ? 'Switch to Half Width (1 Col)' : 'Switch to Full Width (2 Cols)'}
-                    className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
-                  >
-                    <Columns className="w-3 h-3" />
-                  </button>
-
-                  {/* Duplicate */}
-                  <button
-                    type="button"
-                    onClick={() => onDuplicateField(field.id)}
-                    title="Duplicate Field"
-                    className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
-                  >
-                    <Copy className="w-3 h-3" />
-                  </button>
-
-                  {/* Properties Inspector Trigger */}
-                  <button
-                    type="button"
-                    onClick={() => onSelectField(field.id)}
-                    title="Open Field Properties Inspector"
-                    className="p-1 rounded text-blue-600 hover:bg-blue-50 cursor-pointer"
-                  >
-                    <Settings className="w-3 h-3" />
-                  </button>
-
-                  {/* Delete */}
-                  <button
-                    type="button"
-                    onClick={() => onDeleteField(field.id)}
-                    title="Delete Field"
-                    className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 cursor-pointer"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-
-                {/* Explanatory Hover Banner across Bottom Edge */}
-                {hoveredCardId === field.id && (
-                  <div className="pointer-events-none absolute -bottom-7 left-3 z-30 bg-slate-900/95 backdrop-blur-xs text-white text-[11px] font-semibold px-2.5 py-1 rounded-lg shadow-xl border border-slate-700/80 flex items-center gap-2 whitespace-nowrap animate-in fade-in zoom-in-95 duration-100">
-                    <TypeIcon className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
-                    <span>Component: <strong className="text-cyan-200">{typeInfo.label}</strong></span>
-                    <span className="text-slate-500">•</span>
-                    <span className="text-slate-300 font-normal text-[10px]">{typeInfo.desc}</span>
-                    <span className="text-slate-500">•</span>
-                    <span className="font-mono text-cyan-400 text-[10px]">Pos #{index + 1}</span>
-                  </div>
-                )}
-
-                {/* Field Header: Drag handle, Field Type Badge, Editable Label, and PDF Link */}
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1.5 flex-1 mr-2 min-w-0">
-                    {/* Drag Handle with Tooltip */}
-                    <div 
-                      title="Drag handle: drag this box to any position (1st, 2nd, last, etc.)"
-                      className="cursor-grab active:cursor-grabbing p-0.5 hover:bg-slate-200/60 rounded shrink-0"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <GripVertical className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 transition-colors" />
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-[#1877f2] text-white text-xs font-bold px-3.5 py-1.5 rounded-l-md rounded-r-xl shadow-xs flex items-center gap-1.5 tracking-tight">
+                      <span>{page.navbarName || 'Step 1'}</span>
                     </div>
-
-                    {/* Prominent Component Type Badge with Hover Tooltip and Click Switcher */}
-                    <div className="relative group/typeBadge shrink-0">
-                      <div
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenTypeChooserId(openTypeChooserId === field.id ? null : field.id);
-                        }}
-                        title={`Component Type: ${typeInfo.label} (${typeInfo.desc}). Click to change type.`}
-                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold border transition-all hover:scale-105 cursor-pointer select-none ${typeInfo.badgeClass}`}
-                      >
-                        <TypeIcon className={`w-3 h-3 ${typeInfo.iconColor}`} />
-                        <span>{typeInfo.shortName}</span>
-                        <ChevronDown className="w-2.5 h-2.5 opacity-60" />
-                      </div>
-
-                      {/* Conditional Logic Indicator Badge */}
-                      {(() => {
-                        const fieldRules = logicRules.filter(r =>
-                          r.condition?.fieldId === field.id || (r.actions || []).some(a => a.targetFieldId === field.id)
-                        );
-                        if (fieldRules.length === 0) return null;
-
-                        return (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onNavigateToLogics?.(field.id);
-                            }}
-                            title={`Conditional logic active (${fieldRules.length} rule${fieldRules.length > 1 ? 's' : ''}). Click to configure in Logic Studio.`}
-                            className="inline-flex items-center gap-1 ml-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/90 transition-all cursor-pointer shadow-2xs"
-                          >
-                            <GitBranch className="w-2.5 h-2.5 text-indigo-600" />
-                            <span>Logic ({fieldRules.length})</span>
-                          </button>
-                        );
-                      })()}
-
-                      {/* Clickable Quick Type Switcher Dropdown Popover */}
-                      {openTypeChooserId === field.id && (
-                        <div
-                          onClick={(e) => e.stopPropagation()}
-                          className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-2xl py-1.5 w-52 text-xs text-slate-700 animate-in fade-in zoom-in-95 duration-100"
-                        >
-                          <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                            Switch Component Type
-                          </div>
-                          {Object.keys(FIELD_TYPE_INFO)
-                            .filter((k) => k !== 'Section' && k !== 'Header')
-                            .map((t) => {
-                              const info = FIELD_TYPE_INFO[t];
-                              const ChooserIcon = info.icon;
-                              const isCurrent = field.type === t;
-                              return (
-                                <button
-                                  key={t}
-                                  type="button"
-                                  onClick={() => handleChangeFieldType(field.id, t)}
-                                  className={`w-full text-left px-2.5 py-1.5 hover:bg-blue-50 hover:text-blue-600 flex items-center justify-between text-[11px] cursor-pointer ${
-                                    isCurrent ? 'font-bold text-blue-600 bg-blue-50/50' : 'text-slate-700'
-                                  }`}
-                                >
-                                  <span className="flex items-center gap-2">
-                                    <ChooserIcon className={`w-3.5 h-3.5 ${info.iconColor}`} />
-                                    <span>{info.shortName}</span>
-                                  </span>
-                                  {isCurrent && <Check className="w-3 h-3 text-blue-600" />}
-                                </button>
-                              );
-                            })}
-                        </div>
-                      )}
-
-                      {/* Informative Hover Explanatory Tooltip */}
-                      <div className="pointer-events-none absolute bottom-full left-0 mb-1.5 hidden group-hover/typeBadge:flex flex-col z-50 animate-in fade-in zoom-in-95 duration-100">
-                        <div className="bg-slate-900 text-white text-xs px-3 py-2 rounded-xl shadow-2xl border border-slate-700/80 whitespace-nowrap min-w-[220px]">
-                          <div className="flex items-center gap-1.5 font-bold text-white mb-0.5">
-                            <TypeIcon className="w-3.5 h-3.5 text-cyan-300" />
-                            <span>{typeInfo.label}</span>
-                          </div>
-                          <p className="text-[11px] text-slate-300 font-normal leading-tight whitespace-normal max-w-[240px]">
-                            {typeInfo.desc}
-                          </p>
-                          <div className="text-[9px] text-cyan-300 font-mono mt-1.5 pt-1 border-t border-slate-800 flex items-center justify-between">
-                            <span>Position #{index + 1} of {fields.length}</span>
-                            <span>Page {field.pdfMapping?.page || 1}</span>
-                          </div>
-                          <div className="text-[9px] text-amber-300 font-medium mt-1">
-                            💡 Click to switch between Text Box, Choices, Date, etc.
-                          </div>
-                        </div>
-                        <div className="w-2 h-2 bg-slate-900 rotate-45 absolute left-3 -bottom-1 border-r border-b border-slate-700/80 -z-10" />
-                      </div>
-                    </div>
-
-                    {/* Inline Editable Label */}
-                    {isEditingThisLabel ? (
-                      <div className="flex items-center gap-1 flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="text"
-                          value={labelDraft}
-                          onChange={(e) => setLabelDraft(e.target.value)}
-                          onBlur={() => saveLabelEdit(field.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') saveLabelEdit(field.id);
-                            if (e.key === 'Escape') setEditingLabelId(null);
-                          }}
-                          autoFocus
-                          className="text-xs font-semibold text-slate-800 border-b border-blue-500 bg-white px-1 py-0.5 rounded-xs w-full focus:outline-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => saveLabelEdit(field.id)}
-                          className="text-blue-600 hover:text-blue-800 p-0.5 cursor-pointer"
-                        >
-                          <Check className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div
-                        onClick={(e) => startLabelEdit(field, e)}
-                        title="Click to rename field label"
-                        className="flex items-center gap-1 cursor-text group/label min-w-0"
-                      >
-                        <span className="text-xs font-semibold text-slate-800 hover:text-blue-600 transition-colors truncate">
-                          {field.label}
-                        </span>
-                        {field.required && (
-                          <span className="text-red-500 font-bold text-xs" title="Required">*</span>
-                        )}
-                        <Edit2 className="w-2.5 h-2.5 text-slate-300 opacity-0 group-hover/label:opacity-100 transition-opacity shrink-0" />
-                      </div>
+                    {page.readOnly && (
+                      <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+                        Read-only
+                      </span>
                     )}
                   </div>
 
-                  {/* Card Actions / Close button matching Pic 2 */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <div
-                      title={`Linked to original PDF page ${field.pdfMapping?.page || 1}`}
-                      className={`flex items-center gap-1 text-[10px] font-mono font-medium px-1.5 py-0.5 rounded border transition-all ${
-                        isSelected
-                          ? 'text-blue-700 bg-blue-100 border-blue-300'
-                          : 'text-blue-600 bg-blue-50 border-blue-200/60'
-                      }`}
-                    >
-                      <Link2 className="w-2.5 h-2.5" />
-                      <span>PDF P{field.pdfMapping?.page || 1}</span>
-                    </div>
-
+                  <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteField(field.id);
-                      }}
-                      title="Delete Field"
-                      className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-0.5 rounded transition cursor-pointer"
+                      onClick={() => onUpdateField('page_break_1', { readOnly: !page.readOnly })}
+                      title={page.readOnly ? "Unlock page (editable)" : "Lock page (read-only)"}
+                      className={`p-1.5 rounded-lg transition cursor-pointer ${
+                        page.readOnly ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                      }`}
                     >
-                      <X className="w-3.5 h-3.5" />
+                      {page.readOnly ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onSelectField('page_break_1')}
+                      title="Step 1 Properties"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
+                    >
+                      <Settings className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
 
-                {/* Input Preview Body */}
-                {renderFieldInputPreview(field)}
-
-                {/* Helper text / Status Badges */}
-                <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-100 pt-1.5">
-                  <span className="truncate max-w-[200px]" title={typeInfo.label}>
-                    {field.helperText || typeInfo.label}
-                  </span>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[10px] font-mono text-slate-400">
-                      Step {fieldStepNumbers[field.id] || 1} • #{index + 1}
-                    </span>
-                    {field.required && <span className="text-amber-600 font-semibold text-[10px]">Required</span>}
-                    {field.readOnly && <span className="text-blue-600 font-semibold text-[10px]">Locked</span>}
-                    {field.hidden && <span className="text-rose-500 font-semibold text-[10px]">Hidden</span>}
-                  </div>
+                <div style={{ textAlign: page.align || 'left' }}>
+                  <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight mb-1">
+                    {page.title || formTitle}
+                  </h1>
+                  {(page.description || formDescription) && (
+                    <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+                      {page.description || formDescription}
+                    </p>
+                  )}
                 </div>
               </div>
+            ) : (
+              <div
+                onClick={() => onSelectField(page.id)}
+                className={`mb-6 p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer select-none group/stepHeader ${
+                  selectedFieldId === page.id
+                    ? 'border-blue-500 bg-blue-50/20 ring-2 ring-blue-500/20 shadow-xs'
+                    : 'border-slate-200/80 hover:border-blue-300 bg-slate-50/30'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-[#1877f2] text-white text-xs font-bold px-3.5 py-1.5 rounded-l-md rounded-r-xl shadow-xs tracking-tight">
+                      <span>{page.navbarName || `Step ${pageNumber}`}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => onDuplicateField(page.id)}
+                      title="Duplicate Step"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition border border-slate-200 cursor-pointer"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDeleteField(page.id)}
+                      title="Delete Page Break"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition border border-slate-200 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onUpdateField(page.id, { readOnly: !page.readOnly })}
+                      className={`px-2.5 py-1 text-xs border rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
+                        page.readOnly
+                          ? 'bg-blue-50 border-blue-300 text-blue-700 font-semibold'
+                          : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                      }`}
+                    >
+                      {page.readOnly ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                      <span>Read-only</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onUpdateField(page.id, { hidden: !page.hidden })}
+                      className={`px-2.5 py-1 text-xs border rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
+                        page.hidden
+                          ? 'bg-rose-50 border-rose-300 text-rose-700 font-semibold'
+                          : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                      }`}
+                    >
+                      {page.hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      <span>Hidden</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onSelectField(page.id)}
+                      title="Page Break Properties"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
+                    >
+                      <Settings className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ textAlign: page.align || 'left' }}>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                    {page.title || 'Title'}
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {page.description || 'Help text'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Dynamic Fields Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {page.fields.map((field) => {
+                const globalIndex = fields.findIndex(f => f.id === field.id);
+                return renderFieldItem(field, globalIndex >= 0 ? globalIndex : 0);
+              })}
+            </div>
+
+            {/* Add Field Prompt Dropzone */}
+            <div
+              onClick={() => onAddField('Short Text', getInsertIndexForPage(pIdx))}
+              className="mt-6 border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/20 rounded-xl p-3.5 flex items-center justify-center gap-2 text-xs font-medium text-slate-400 hover:text-blue-600 cursor-pointer transition-colors group"
+            >
+              <Plus className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:scale-110" />
+              <span>Click to add a field to {page.navbarName || `Step ${pageNumber}`}</span>
+            </div>
+
+            {/* Bottom Button of this Sheet */}
+            {!isLastPage ? (
+              <div
+                data-field-id={pageButtonId}
+                onClick={() => onSelectField(pageButtonId)}
+                className={`mt-6 pt-5 border-t border-slate-100 flex flex-col items-center justify-center cursor-pointer p-4 rounded-xl transition select-none group ${
+                  isPageButtonSelected
+                    ? 'bg-blue-50/40 ring-2 ring-blue-500/30 border border-blue-400'
+                    : 'hover:bg-slate-50/80 border border-transparent hover:border-slate-200'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-2.5 group-hover:text-blue-600 transition">
+                  <span className="text-blue-500">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="3" width="18" height="18" rx="4" />
+                      <path d="m11 8 4 4-4 4" />
+                    </svg>
+                  </span>
+                  <span className="font-semibold">Page Buttons</span>
+                </div>
+                <div className={`w-full flex ${
+                  (nextPageBreakField?.buttonAlign || 'center') === 'left' ? 'justify-start' :
+                  (nextPageBreakField?.buttonAlign || 'center') === 'right' ? 'justify-end' :
+                  'justify-center'
+                }`}>
+                  <div className="border border-dashed border-slate-300 rounded-lg px-8 py-2 text-xs text-slate-600 bg-white hover:border-blue-400 hover:text-blue-600 transition shadow-2xs font-semibold">
+                    {nextPageBreakField?.nextButtonText || 'Continue'}
+                  </div>
+                </div>
+                {nextPageBreakField?.buttonHelp && (
+                  <p className="text-[11px] text-slate-400 mt-2 text-center">
+                    {nextPageBreakField.buttonHelp}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div
+                data-field-id="submission_buttons"
+                onClick={() => onSelectField('submission_buttons')}
+                className={`mt-6 pt-5 border-t border-slate-100 flex flex-col items-center justify-center cursor-pointer p-4 rounded-xl transition select-none group ${
+                  isSubmissionSelected
+                    ? 'bg-blue-50/40 ring-2 ring-blue-500/30 border border-blue-400'
+                    : 'hover:bg-slate-50/80 border border-transparent hover:border-slate-200'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-2.5 group-hover:text-blue-600 transition">
+                  <span className="text-blue-500">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="3" width="18" height="18" rx="4" />
+                      <path d="m11 8 4 4-4 4" />
+                    </svg>
+                  </span>
+                  <span className="font-semibold">Submission Buttons</span>
+                </div>
+                <div className={`w-full flex items-center gap-3 ${
+                  (formMeta.buttonAlign || 'center') === 'left' ? 'justify-start' :
+                  (formMeta.buttonAlign || 'center') === 'right' ? 'justify-end' :
+                  'justify-center'
+                }`}>
+                  {pages.length > 1 && (
+                    <div className="border border-dashed border-slate-300 rounded-lg px-7 py-2 text-xs text-slate-600 bg-white hover:border-blue-400 hover:text-blue-600 transition shadow-2xs font-semibold">
+                      {formMeta.prevButtonText || 'Back'}
+                    </div>
+                  )}
+                  <div className="border border-dashed border-slate-300 rounded-lg px-7 py-2 text-xs text-slate-600 bg-white hover:border-blue-400 hover:text-blue-600 transition shadow-2xs font-semibold">
+                    {formMeta.submitButtonText || 'Submit'}
+                  </div>
+                </div>
+                {formMeta.buttonHelp && (
+                  <p className="text-[11px] text-slate-400 mt-2 text-center">
+                    {formMeta.buttonHelp}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Floating Bottom Pagination Bar matching PlatoForms Screenshot */}
+      <div className="sticky bottom-4 z-40 flex items-center justify-center pointer-events-none mt-2 mb-3">
+        <div className="bg-[#2E3842] text-white rounded-full px-2.5 py-1.5 flex items-center gap-1.5 border border-slate-700/80 shadow-2xl backdrop-blur-md pointer-events-auto select-none">
+          {/* Previous Page */}
+          <button
+            type="button"
+            disabled={safeActivePage <= 1}
+            onClick={() => scrollToSheet(Math.max(1, safeActivePage - 1))}
+            title="Previous Page"
+            className="p-1 rounded-full text-slate-300 hover:text-white hover:bg-slate-700/60 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer transition active:scale-95"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+
+          {/* Page numbers */}
+          {Array.from({ length: pages.length }).map((_, idx) => {
+            const pNum = idx + 1;
+            const isActive = safeActivePage === pNum;
+            return (
+              <button
+                key={pNum}
+                type="button"
+                onClick={() => scrollToSheet(pNum)}
+                title={`Go to Sheet ${pNum}`}
+                className={`min-w-6 h-6 px-2 text-xs font-bold rounded-md flex items-center justify-center transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-[#1877f2] text-white shadow-xs'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+                }`}
+              >
+                {pNum}
+              </button>
             );
           })}
-        </div>
 
-        {/* Add Field Prompt Dropzone Button */}
-        <div
-          onClick={() => onAddField('Short Text')}
-          className="mt-6 border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/20 rounded-xl p-4 flex items-center justify-center gap-2 text-xs font-medium text-slate-400 hover:text-blue-600 cursor-pointer transition-colors group"
-        >
-          <Plus className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:scale-110" />
-          <span>Click any tool in sidebar or click here to add a new Text Box</span>
-        </div>
-
-        {/* Submission Button Container at the bottom */}
-        <div className="mt-10 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <HelpCircle className="w-3.5 h-3.5" />
-            <span>Ready for dynamic form generation & instant PDF synchronization.</span>
-          </div>
-
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-            <button
-              type="button"
-              onClick={onSaveTemplate}
-              disabled={isSavingTemplate}
-              title="Permanently save current layout to SQLite template memory"
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition cursor-pointer disabled:opacity-50"
-            >
-              {isSavingTemplate ? 'Saving to SQLite...' : 'Save Draft & Template'}
-            </button>
-            <button
-              type="button"
-              onClick={onSaveTemplate}
-              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:shadow-md transition-all active:scale-[0.99] cursor-pointer"
-            >
-              <span>Submit Application</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          {/* Next Page */}
+          <button
+            type="button"
+            disabled={safeActivePage >= pages.length}
+            onClick={() => scrollToSheet(Math.min(pages.length, safeActivePage + 1))}
+            title="Next Page"
+            className="p-1 rounded-full text-slate-300 hover:text-white hover:bg-slate-700/60 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer transition active:scale-95"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
