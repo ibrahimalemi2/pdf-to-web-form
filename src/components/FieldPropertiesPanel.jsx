@@ -2594,26 +2594,32 @@ export default function FieldPropertiesPanel({
   const photoContent = (
     <div className="flex flex-col h-full min-h-0 bg-white text-slate-700">
       {/* Header matching Screenshot: Photo #64 | Logics 📌 ✕ */}
-      <div className="h-14 px-6 border-b border-dotted border-slate-200 flex items-center justify-between shrink-0 bg-white">
+      <div className="h-12 px-6 border-b border-dotted border-slate-300 flex items-center justify-between shrink-0 bg-white">
         <div className="flex items-center gap-1.5">
-          <span className="text-base font-bold text-slate-900 tracking-tight">
+          <span className="text-sm font-semibold text-slate-800 tracking-tight">
             Photo
           </span>
-          <span className="text-sm font-normal text-slate-400">
+          <span className="text-xs font-normal text-slate-400">
             #{effectivePhotoNum}
           </span>
         </div>
 
         {/* Right Header Actions: Logics, Pin, Close */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => onNavigateToLogics?.(field.id)}
             title="Configure Field Logic Rules"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-slate-100 transition cursor-pointer"
+            className="flex items-center gap-1 text-xs text-slate-700 hover:text-blue-600 transition cursor-pointer"
           >
-            <GitBranch className="w-3.5 h-3.5 text-slate-600" />
-            <span>Logics</span>
+            <svg viewBox="0 0 16 16" className="w-3.5 h-3.5 text-slate-700" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <circle cx="3" cy="8" r="1.8" />
+              <circle cx="13" cy="4" r="1.8" />
+              <circle cx="13" cy="12" r="1.8" />
+              <path d="M4.8 8h3.2a2 2 0 0 0 2-2V4" />
+              <path d="M8 8a2 2 0 0 1 2 2v2" />
+            </svg>
+            <span className="font-normal">Logics</span>
           </button>
 
           {onTogglePin ? (
@@ -2621,18 +2627,14 @@ export default function FieldPropertiesPanel({
               type="button"
               onClick={onTogglePin}
               title={isPinned ? "Unpin to floating window" : "Pin to sidebar"}
-              className={`p-1.5 rounded-lg transition cursor-pointer ${
-                isPinned 
-                  ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' 
-                  : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
-              }`}
+              className="text-slate-600 hover:text-slate-900 transition cursor-pointer p-0.5"
             >
               {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
             </button>
           ) : (
             <button
               type="button"
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              className="text-slate-600 hover:text-slate-900 transition cursor-pointer p-0.5"
               title="Pin settings"
             >
               <Pin className="w-4 h-4" />
@@ -2643,20 +2645,20 @@ export default function FieldPropertiesPanel({
             type="button"
             onClick={onClose}
             title="Close Settings"
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+            className="text-slate-600 hover:text-slate-900 transition cursor-pointer p-0.5"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Body with scrolling */}
-      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-6 sm:p-8 space-y-5 text-xs text-slate-700 [scrollbar-width:thin] [scrollbar-color:#cbd5e1_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300 hover:[&::-webkit-scrollbar-thumb]:bg-slate-400 [&::-webkit-scrollbar-track]:bg-slate-50">
+      {/* Body */}
+      <div className="p-6 space-y-4 text-xs text-slate-700 overflow-y-auto max-h-[calc(96vh-48px)]">
         
         {/* Form Attributes matching Screenshot */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">
+            <span className="text-xs font-normal text-slate-400">
               Form Attributes
             </span>
 
@@ -2666,7 +2668,7 @@ export default function FieldPropertiesPanel({
                 type="button"
                 onClick={() => onUpdateField(field.id, { align: 'left' })}
                 title="Align Left"
-                className={`w-7 h-7 flex items-center justify-center rounded text-xs transition cursor-pointer ${
+                className={`w-6 h-6 flex items-center justify-center rounded-[3px] transition cursor-pointer ${
                   (field.align || 'left') === 'left'
                     ? 'bg-[#1877f2] text-white shadow-2xs'
                     : 'bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-700'
@@ -2682,7 +2684,7 @@ export default function FieldPropertiesPanel({
                 type="button"
                 onClick={() => onUpdateField(field.id, { align: 'center' })}
                 title="Align Center"
-                className={`w-7 h-7 flex items-center justify-center rounded text-xs transition cursor-pointer ${
+                className={`w-6 h-6 flex items-center justify-center rounded-[3px] transition cursor-pointer ${
                   field.align === 'center'
                     ? 'bg-[#1877f2] text-white shadow-2xs'
                     : 'bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-700'
@@ -2698,7 +2700,7 @@ export default function FieldPropertiesPanel({
                 type="button"
                 onClick={() => onUpdateField(field.id, { align: 'right' })}
                 title="Align Right"
-                className={`w-7 h-7 flex items-center justify-center rounded text-xs transition cursor-pointer ${
+                className={`w-6 h-6 flex items-center justify-center rounded-[3px] transition cursor-pointer ${
                   field.align === 'right'
                     ? 'bg-[#1877f2] text-white shadow-2xs'
                     : 'bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-700'
@@ -2713,10 +2715,11 @@ export default function FieldPropertiesPanel({
             </div>
           </div>
 
-          {/* Row 1: Label and Help Text in two columns matching Screenshot */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            <div className="flex items-center gap-4">
-              <label className="w-20 text-xs font-medium text-slate-600 shrink-0">
+          {/* 2 Columns: Row 1 (Label & Help Text), Row 2 (Placeholder & Uploading) */}
+          <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+            {/* Label */}
+            <div className="flex items-center gap-2">
+              <label className="w-18 text-xs text-slate-700 font-normal shrink-0">
                 Label
               </label>
               <div className="flex-1 relative flex items-center">
@@ -2724,20 +2727,24 @@ export default function FieldPropertiesPanel({
                   type="text"
                   value={field.label ?? 'Photo'}
                   onChange={(e) => onUpdateField(field.id, { label: e.target.value })}
-                  className="w-full px-3 py-2 pr-10 text-xs rounded-lg border border-blue-500 ring-2 ring-blue-500/20 bg-white text-slate-900 focus:outline-none transition shadow-2xs"
+                  className="w-full px-2.5 py-1.5 pr-8 text-xs rounded-[4px] border border-[#1877f2] ring-1 ring-[#1877f2] bg-white text-slate-800 focus:outline-none"
                 />
                 <button
                   type="button"
                   title="Field label settings"
-                  className="absolute right-1.5 top-1.5 bottom-1.5 px-1.5 border border-slate-200 rounded text-slate-400 hover:text-slate-600 bg-white flex items-center justify-center transition cursor-pointer"
+                  className="absolute right-1 top-1 bottom-1 px-1.5 border border-slate-200 rounded-[3px] text-slate-400 hover:text-slate-600 bg-white flex items-center justify-center transition cursor-pointer"
                 >
-                  <ArrowLeftRight className="w-3 h-3" />
+                  <svg viewBox="0 0 16 16" className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" strokeWidth="1.6">
+                    <path d="M2.5 5h9M9 2.5l2.5 2.5L9 7.5M2.5 3.5v3" />
+                    <path d="M13.5 11h-9M7 8.5L4.5 11 7 13.5M13.5 9.5v3" />
+                  </svg>
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <label className="w-20 text-xs font-medium text-slate-600 shrink-0">
+            {/* Help Text */}
+            <div className="flex items-center gap-2">
+              <label className="w-18 text-xs text-slate-700 font-normal shrink-0">
                 Help Text
               </label>
               <div className="flex-1">
@@ -2746,16 +2753,14 @@ export default function FieldPropertiesPanel({
                   value={field.helperText || ''}
                   onChange={(e) => onUpdateField(field.id, { helperText: e.target.value })}
                   placeholder="Help Text"
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs"
+                  className="w-full px-2.5 py-1.5 text-xs rounded-[4px] border border-slate-200 bg-white text-slate-800 placeholder-slate-300 focus:outline-none focus:border-[#1877f2] transition"
                 />
               </div>
             </div>
-          </div>
 
-          {/* Row 2: Placeholder and Uploading in two columns matching Screenshot */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            <div className="flex items-center gap-4">
-              <label className="w-20 text-xs font-medium text-slate-600 shrink-0">
+            {/* Placeholder */}
+            <div className="flex items-center gap-2">
+              <label className="w-18 text-xs text-slate-700 font-normal shrink-0">
                 Placeholder
               </label>
               <div className="flex-1">
@@ -2763,13 +2768,14 @@ export default function FieldPropertiesPanel({
                   type="text"
                   value={field.placeholder ?? 'Choose a photo or drag it here.'}
                   onChange={(e) => onUpdateField(field.id, { placeholder: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs"
+                  className="w-full px-2.5 py-1.5 text-xs rounded-[4px] border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-[#1877f2] transition"
                 />
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <label className="w-20 text-xs font-medium text-slate-600 shrink-0">
+            {/* Uploading */}
+            <div className="flex items-center gap-2">
+              <label className="w-18 text-xs text-slate-700 font-normal shrink-0">
                 Uploading
               </label>
               <div className="flex-1">
@@ -2777,22 +2783,22 @@ export default function FieldPropertiesPanel({
                   type="text"
                   value={field.uploadingText ?? 'Uploading...'}
                   onChange={(e) => onUpdateField(field.id, { uploadingText: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs"
+                  className="w-full px-2.5 py-1.5 text-xs rounded-[4px] border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-[#1877f2] transition"
                 />
               </div>
             </div>
           </div>
 
-          {/* 4 Checkboxes in a single row matching Screenshot */}
-          <div className="flex flex-wrap items-center gap-6 pt-1 select-none">
+          {/* 4 Checkboxes in a single row */}
+          <div className="flex items-center justify-between pt-1 select-none">
             <label className="flex items-center gap-2 cursor-pointer group">
               <input
                 type="checkbox"
                 checked={field.required ?? true}
                 onChange={(e) => onUpdateField(field.id, { required: e.target.checked })}
-                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-[#1877f2]"
+                className="w-4 h-4 rounded-[3px] border-slate-300 text-[#1877f2] focus:ring-0 cursor-pointer accent-[#1877f2]"
               />
-              <span className="text-xs font-medium text-slate-700 group-hover:text-slate-900 transition">
+              <span className="text-xs font-normal text-slate-700">
                 Required
               </span>
             </label>
@@ -2802,9 +2808,9 @@ export default function FieldPropertiesPanel({
                 type="checkbox"
                 checked={field.readOnly ?? false}
                 onChange={(e) => onUpdateField(field.id, { readOnly: e.target.checked })}
-                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-[#1877f2]"
+                className="w-4 h-4 rounded-[3px] border-slate-300 text-[#1877f2] focus:ring-0 cursor-pointer accent-[#1877f2]"
               />
-              <span className="text-xs font-medium text-slate-700 group-hover:text-slate-900 transition">
+              <span className="text-xs font-normal text-slate-700">
                 Read-only on Form
               </span>
             </label>
@@ -2814,9 +2820,9 @@ export default function FieldPropertiesPanel({
                 type="checkbox"
                 checked={field.hidden ?? false}
                 onChange={(e) => onUpdateField(field.id, { hidden: e.target.checked })}
-                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-[#1877f2]"
+                className="w-4 h-4 rounded-[3px] border-slate-300 text-[#1877f2] focus:ring-0 cursor-pointer accent-[#1877f2]"
               />
-              <span className="text-xs font-medium text-slate-700 group-hover:text-slate-900 transition">
+              <span className="text-xs font-normal text-slate-700">
                 Hidden on Form
               </span>
             </label>
@@ -2826,9 +2832,9 @@ export default function FieldPropertiesPanel({
                 type="checkbox"
                 checked={field.printInPdf ?? true}
                 onChange={(e) => onUpdateField(field.id, { printInPdf: e.target.checked })}
-                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-[#1877f2]"
+                className="w-4 h-4 rounded-[3px] border-slate-300 text-[#1877f2] focus:ring-0 cursor-pointer accent-[#1877f2]"
               />
-              <span className="text-xs font-medium text-slate-700 group-hover:text-slate-900 transition">
+              <span className="text-xs font-normal text-slate-700">
                 Print in PDF
               </span>
             </label>
@@ -2836,26 +2842,26 @@ export default function FieldPropertiesPanel({
         </div>
 
         {/* Dotted divider */}
-        <div className="border-b border-dotted border-slate-200" />
+        <div className="border-b border-dotted border-slate-300" />
 
         {/* PDF Section matching Screenshot */}
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-800">
+            <span className="text-xs font-semibold text-slate-800">
               PDF
             </span>
             <button
               type="button"
               onClick={() => onUpdateField(field.id, { reuseOnPdf: true })}
-              className="text-xs font-medium text-[#1877f2] hover:underline cursor-pointer"
+              className="text-xs text-[#1877f2] hover:underline cursor-pointer"
             >
               Reuse Content on PDF
             </button>
           </div>
 
           {/* Fit Mode row with radio buttons */}
-          <div className="flex items-center gap-8 select-none pt-1">
-            <span className="w-20 text-xs font-medium text-slate-600 shrink-0">
+          <div className="flex items-center gap-6 select-none pt-0.5">
+            <span className="w-18 text-xs font-normal text-slate-700 shrink-0">
               Fit Mode
             </span>
             <div className="flex items-center gap-6">
@@ -2865,9 +2871,9 @@ export default function FieldPropertiesPanel({
                   name={`fitMode_${field.id}`}
                   checked={(field.fitMode || 'stretch') === 'stretch'}
                   onChange={() => onUpdateField(field.id, { fitMode: 'stretch' })}
-                  className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer accent-[#1877f2]"
+                  className="w-4 h-4 text-[#1877f2] focus:ring-0 cursor-pointer accent-[#1877f2]"
                 />
-                <span className="text-xs font-medium text-slate-700 group-hover:text-slate-900 transition">
+                <span className="text-xs font-normal text-slate-700">
                   Stretch to Fill
                 </span>
               </label>
@@ -2878,9 +2884,9 @@ export default function FieldPropertiesPanel({
                   name={`fitMode_${field.id}`}
                   checked={field.fitMode === 'aspect'}
                   onChange={() => onUpdateField(field.id, { fitMode: 'aspect' })}
-                  className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer accent-[#1877f2]"
+                  className="w-4 h-4 text-[#1877f2] focus:ring-0 cursor-pointer accent-[#1877f2]"
                 />
-                <span className="text-xs font-medium text-slate-700 group-hover:text-slate-900 transition">
+                <span className="text-xs font-normal text-slate-700">
                   Aspect Ratio Fit
                 </span>
               </label>
@@ -2889,92 +2895,41 @@ export default function FieldPropertiesPanel({
         </div>
 
         {/* Dotted divider */}
-        <div className="border-b border-dotted border-slate-200" />
+        <div className="border-b border-dotted border-slate-300" />
 
         {/* Preview Section matching Screenshot */}
-        <div className="space-y-3 pt-1">
+        <div className="space-y-2 pt-0.5">
           <div className="flex items-center gap-2 text-slate-400">
-            <svg viewBox="0 0 16 16" className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" />
-              <circle cx="8" cy="8" r="2.2" />
-              <path d="M4.5 8c1-1.8 2.3-2.5 3.5-2.5s2.5.7 3.5 2.5c-1 1.8-2.3 2.5-3.5 2.5s-2.5-.7-3.5-2.5z" />
+            <svg viewBox="0 0 16 16" className="w-4 h-4 text-slate-600" fill="currentColor">
+              <path fillRule="evenodd" d="M1.5 3A1.5 1.5 0 0 1 3 1.5h10A1.5 1.5 0 0 1 14.5 3v10a1.5 1.5 0 0 1-1.5 1.5H3A1.5 1.5 0 0 1 1.5 13V3zm1.2 0a.3.3 0 0 1 .3-.3h10a.3.3 0 0 1 .3.3v10a.3.3 0 0 1-.3.3H3a.3.3 0 0 1-.3-.3V3z" />
+              <path d="M8 5.5c-2.3 0-4.2 1.5-5 2.5.8 1 2.7 2.5 5 2.5s4.2-1.5 5-2.5c-.8-1-2.7-2.5-5-2.5zm0 4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z" />
             </svg>
-            <span className="text-xs font-semibold text-slate-400">
+            <span className="text-xs font-normal text-slate-400">
               Preview
             </span>
           </div>
 
-          <div className="border-2 border-dashed border-slate-200/90 rounded-xl p-6 sm:p-8 bg-white transition-all shadow-2xs">
-            <div style={{ textAlign: field.align || 'left' }} className="mb-2.5">
-              <span className="text-xs sm:text-sm font-bold text-slate-800">
+          <div className="border border-dashed border-slate-300 rounded-md p-6 bg-white transition-all">
+            <div style={{ textAlign: field.align || 'left' }} className="mb-2">
+              <span className="text-xs font-semibold text-slate-800">
                 {field.label || 'Photo'}
-                {field.required && <span className="text-slate-900 ml-0.5">*</span>}
+                {field.required && <span className="text-slate-800">*</span>}
               </span>
             </div>
 
             {/* Photo Box in Preview matching PlatoForms screenshot */}
-            <input
-              type="file"
-              id={`preview-photo-upload-${field.id}`}
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) {
-                  const r = new FileReader();
-                  r.onload = (ev) => onUpdateField(field.id, { value: ev.target.result });
-                  r.readAsDataURL(f);
-                }
-              }}
-            />
-
-            {field.value && typeof field.value === 'string' && (field.value.startsWith('data:image/') || field.value.startsWith('http') || field.value.startsWith('blob:')) ? (
-              <div className="relative border-2 border-dashed border-slate-300 rounded-lg p-3 bg-slate-50/50 flex flex-col items-center justify-center">
-                <img
-                  src={field.value}
-                  alt={field.label || 'Photo'}
-                  style={{
-                    objectFit: field.fitMode === 'aspect' ? 'contain' : 'cover',
-                    maxHeight: '12rem'
-                  }}
-                  className="rounded max-w-full shadow-xs"
-                />
-                <button
-                  type="button"
-                  onClick={() => onUpdateField(field.id, { value: '' })}
-                  className="mt-2 text-xs text-red-500 hover:underline font-medium cursor-pointer"
-                >
-                  Remove Photo
-                </button>
+            <div className="border border-dashed border-slate-300 rounded-[4px] py-10 px-6 flex flex-col items-center justify-center gap-2 text-center bg-white">
+              <div className="flex items-center gap-2 text-slate-700 font-semibold text-xs sm:text-sm">
+                <Upload className="w-4 h-4 text-slate-700" />
+                <span>{field.placeholder || 'Choose a photo or drag it here.'}</span>
               </div>
-            ) : (
-              <label
-                htmlFor={`preview-photo-upload-${field.id}`}
-                className="border-2 border-dashed border-slate-300 rounded-lg p-10 flex flex-col items-center justify-center gap-2 text-center bg-white cursor-pointer hover:border-blue-400 transition"
-              >
-                <div className="flex items-center gap-2 text-slate-800 font-bold text-xs sm:text-sm">
-                  <Upload className="w-4 h-4 text-slate-700" />
-                  <span>{field.placeholder || 'Choose a photo or drag it here.'}</span>
-                </div>
-                <span className="text-xs text-slate-500 font-normal">
-                  {field.uploadingText || 'Uploading...'}
-                </span>
-              </label>
-            )}
+              <span className="text-xs text-slate-500 font-normal">
+                {field.uploadingText || 'Uploading...'}
+              </span>
+            </div>
           </div>
         </div>
 
-      </div>
-
-      {/* Done button footer */}
-      <div className="p-4 px-5 border-t border-slate-200/90 bg-slate-50/60 flex items-center justify-end shrink-0">
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-5 py-1.5 bg-[#1877f2] hover:bg-blue-600 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer"
-        >
-          Done
-        </button>
       </div>
     </div>
   );
@@ -3008,7 +2963,7 @@ export default function FieldPropertiesPanel({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200/90 w-full max-w-2xl h-[86vh] max-h-[88vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+      <div className={`bg-white rounded-xl shadow-2xl border border-slate-200/90 w-full ${isPhoto ? 'max-w-[650px] max-h-[96vh]' : 'max-w-2xl h-[86vh] max-h-[88vh]'} flex flex-col overflow-hidden animate-in zoom-in-95 duration-150`}>
         {activeContent}
       </div>
     </div>
