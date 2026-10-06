@@ -16,7 +16,8 @@ import {
   UploadCloud,
   Globe,
   Download,
-  Loader2
+  Loader2,
+  Upload
 } from 'lucide-react';
 import { downloadFilledPdf } from '../services/api';
 import { computeDynamicFieldStates } from '../utils/logicEngine';
@@ -679,6 +680,108 @@ export default function PreviewMode({
           </div>
         );
 
+      case 'Photo':
+      case 'Image': {
+        const isPhotoUploaded = Boolean(val && typeof val === 'string' && val.trim().length > 0);
+        const fitMode = field.fitMode || 'stretch';
+
+        return (
+          <div className="space-y-2">
+            <input
+              type="file"
+              id={`photo-input-${field.id}`}
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onload = (loadEvent) => {
+                    handleInputChange(field.id, loadEvent.target.result);
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+            />
+            {isPhotoUploaded ? (
+              <div className="border border-slate-200 rounded-xl p-3 bg-white shadow-2xs">
+                <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span className="text-xs font-semibold text-slate-800">Photo Uploaded</span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {fitMode === 'aspect' ? 'Aspect Ratio Fit' : 'Stretch to Fill'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label
+                      htmlFor={`photo-input-${field.id}`}
+                      className="text-xs text-blue-600 hover:underline font-semibold cursor-pointer"
+                    >
+                      Change
+                    </label>
+                    <span className="text-slate-300">•</span>
+                    <button
+                      type="button"
+                      onClick={() => handleInputChange(field.id, '')}
+                      className="text-xs text-red-500 hover:underline font-medium cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+                <div className="w-full flex items-center justify-center bg-slate-50 rounded-lg p-2 overflow-hidden max-h-60">
+                  <img
+                    src={val}
+                    alt={field.label || 'Uploaded Photo'}
+                    style={{
+                      objectFit: fitMode === 'aspect' ? 'contain' : 'cover',
+                      maxHeight: '15rem'
+                    }}
+                    className="rounded shadow-xs max-w-full"
+                  />
+                </div>
+              </div>
+            ) : (
+              <label
+                htmlFor={`photo-input-${field.id}`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const file = e.dataTransfer?.files?.[0];
+                  if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (loadEvent) => {
+                      handleInputChange(field.id, loadEvent.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-2 cursor-pointer transition text-center ${
+                  hasErr
+                    ? 'border-red-400 bg-red-50/20'
+                    : 'border-slate-300 hover:border-blue-500 bg-white hover:bg-blue-50/10'
+                }`}
+              >
+                <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Upload className="w-5 h-5 text-blue-600" />
+                </div>
+                <span className="text-xs sm:text-sm font-bold text-slate-800">
+                  {field.placeholder || 'Choose a photo or drag it here.'}
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  {field.uploadingText || 'Click to select JPG, PNG, or WEBP from device'}
+                </span>
+              </label>
+            )}
+          </div>
+        );
+      }
+
       case 'Header':
         return null;
 
@@ -897,6 +1000,96 @@ export default function PreviewMode({
             </span>
           </div>
         );
+
+      case 'Photo':
+      case 'Image': {
+        const isPhotoUploaded = Boolean(val && typeof val === 'string' && val.trim().length > 0);
+        const fitMode = field.fitMode || 'stretch';
+
+        return (
+          <div className="space-y-4 max-w-md">
+            <input
+              type="file"
+              id={`conv-photo-input-${field.id}`}
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onload = (loadEvent) => {
+                    handleInputChange(field.id, loadEvent.target.result);
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+            />
+            {isPhotoUploaded ? (
+              <div className="border border-slate-200 rounded-2xl p-4 bg-white shadow-xs text-center space-y-3">
+                <div className="flex items-center justify-center gap-2 text-emerald-600">
+                  <CheckCircle2 className="w-5 h-5" />
+                  <span className="text-xs font-bold text-slate-900">Photo Selected</span>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-2 flex items-center justify-center max-h-52 overflow-hidden">
+                  <img
+                    src={val}
+                    alt="Photo"
+                    style={{ objectFit: fitMode === 'aspect' ? 'contain' : 'cover' }}
+                    className="max-h-48 rounded"
+                  />
+                </div>
+                <div className="flex items-center justify-center gap-3">
+                  <label
+                    htmlFor={`conv-photo-input-${field.id}`}
+                    className="text-xs font-semibold text-blue-600 hover:underline cursor-pointer"
+                  >
+                    Change Photo
+                  </label>
+                  <span className="text-slate-300">•</span>
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange(field.id, '')}
+                    className="text-xs font-semibold text-red-500 hover:underline cursor-pointer"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label
+                htmlFor={`conv-photo-input-${field.id}`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const file = e.dataTransfer?.files?.[0];
+                  if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (loadEvent) => {
+                      handleInputChange(field.id, loadEvent.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                className="border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition border-slate-300 hover:border-blue-500 bg-slate-50 hover:bg-blue-50/15"
+              >
+                <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Upload className="w-6 h-6 text-blue-600" />
+                </div>
+                <span className="text-sm font-bold text-slate-900">
+                  {field.placeholder || 'Choose a photo or drag it here.'}
+                </span>
+                <span className="text-xs text-slate-400">
+                  {field.uploadingText || 'JPG, PNG or WEBP up to 10MB'}
+                </span>
+              </label>
+            )}
+          </div>
+        );
+      }
 
       case 'Short Text':
       default:
@@ -1240,6 +1433,8 @@ export default function PreviewMode({
                         field.type === 'Long Text' ||
                         field.type === 'Signature' ||
                         field.type === 'File Upload' ||
+                        field.type === 'Photo' ||
+                        field.type === 'Image' ||
                         isAddress ||
                         (cleanLbl && (
                           cleanLbl.toLowerCase().includes('purpose') ||
@@ -1258,6 +1453,9 @@ export default function PreviewMode({
                               <span className="text-red-500 font-bold ml-0.5">*</span>
                             )}
                           </label>
+                          {field.helperText && (
+                            <p className="text-[11px] text-slate-400 -mt-0.5 mb-1.5">{field.helperText}</p>
+                          )}
 
                           {renderClassicInput(field)}
 

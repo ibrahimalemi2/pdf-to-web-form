@@ -89,9 +89,9 @@ const TOOLS = [
     icon: Upload
   },
   {
-    id: 'image',
-    label: 'Image',
-    type: 'File Upload',
+    id: 'photo',
+    label: 'Photo',
+    type: 'Photo',
     icon: ImageIcon
   },
   {

@@ -40,6 +40,9 @@ def fill_pdf_template(
         if field_type in ("Header", "Section"):
             continue
 
+        if field.get("printInPdf") is False:
+            continue
+
         field_id = field.get("id")
         val = form_data.get(field_id) if field_id in form_data else field.get("value")
 
@@ -112,22 +115,27 @@ def fill_pdf_template(
                 _stamp_mark_on_page(page, rect, tick_format, rgb)
             continue
 
-        if field_type == "Signature" and rect:
+        if field_type in ("Signature", "Photo", "Image") and rect:
             val_str = str(val).strip()
-            # If user provided a canvas data URL signature
+            # If user provided a canvas data URL or uploaded photo
             if val_str.startswith("data:image/") and ";base64," in val_str:
                 try:
                     img_data = base64.b64decode(val_str.split(";base64,")[1])
-                    page.insert_image(rect, stream=img_data)
+                    keep_proportion = (field.get("fitMode") == "aspect") if field_type in ("Photo", "Image") else False
+                    page.insert_image(rect, stream=img_data, keep_proportion=keep_proportion)
                     continue
                 except Exception:
                     pass
 
-            # Otherwise format text as digital signature
-            fs = min(12, max(8, int(rect.height * 0.65)))
-            sig_text = val_str if "[Signed" in val_str else f"{val_str} [Signed Digitally]"
-            page.insert_textbox(rect, sig_text, fontsize=fs, fontname="times-italic", color=(0.05, 0.15, 0.65))
-            continue
+            if field_type == "Signature":
+                # Otherwise format text as digital signature
+                fs = min(12, max(8, int(rect.height * 0.65)))
+                sig_text = val_str if "[Signed" in val_str else f"{val_str} [Signed Digitally]"
+                page.insert_textbox(rect, sig_text, fontsize=fs, fontname="times-italic", color=(0.05, 0.15, 0.65))
+                continue
+            elif val_str:
+                page.insert_textbox(rect, f"[Photo: {val_str}]", fontsize=9, fontname="helv", color=(0.2, 0.2, 0.2))
+                continue
 
         # Textual fields: Short Text, Long Text, Dropdown, Date
         if rect:

@@ -9,7 +9,8 @@ import {
   Sparkles,
   MousePointer,
   Crosshair,
-  Upload
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
 import { loadPdfDocument, renderPdfPageToCanvas } from '../utils/pdfRenderer';
 import { getSyncedCheckboxCoordinates } from '../utils/checkboxHelper';
@@ -219,11 +220,20 @@ function PdfPageCard({
                     </>
                   )}
 
-                  {/* Live Text or Signature Value display inside box */}
-                  {field.value && (
+                  {/* Live Text, Photo, or Signature Value display inside box */}
+                  {field.value ? (
                     <div className="absolute inset-0 px-1 py-0.5 text-[10px] font-medium text-slate-800 pointer-events-none truncate overflow-hidden flex items-center justify-center">
-                      {field.type === 'Signature' && typeof field.value === 'string' && field.value.startsWith('data:image/') ? (
-                        <img src={field.value} alt="Signature" className="max-h-full max-w-full object-contain mx-auto" />
+                      {(field.type === 'Photo' || field.type === 'Image' || field.type === 'Signature') && typeof field.value === 'string' && (field.value.startsWith('data:image/') || field.value.startsWith('http') || field.value.startsWith('blob:')) ? (
+                        <img
+                          src={field.value}
+                          alt={field.label || 'Value'}
+                          style={{
+                            objectFit: (field.type === 'Photo' || field.type === 'Image')
+                              ? (field.fitMode === 'aspect' ? 'contain' : 'fill')
+                              : 'contain'
+                          }}
+                          className="max-h-full max-w-full mx-auto"
+                        />
                       ) : field.type === 'Signature' && field.value ? (
                         <span style={{ fontFamily: "'Dancing Script', 'Caveat', cursive", color: field.inkColor || '#000000' }} className="text-sm select-none truncate">
                           {field.value}
@@ -232,6 +242,13 @@ function PdfPageCard({
                         field.value
                       )}
                     </div>
+                  ) : (
+                    (field.type === 'Photo' || field.type === 'Image') && (
+                      <div className="absolute inset-0 flex items-center justify-center gap-1 text-[10px] text-cyan-900/60 font-medium pointer-events-none select-none px-1">
+                        <ImageIcon className="w-3 h-3 text-cyan-700/70 shrink-0" />
+                        <span className="truncate max-w-[85%]">{field.label || 'Photo'}</span>
+                      </div>
+                    )
                   )}
                 </div>
               )}

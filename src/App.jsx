@@ -196,7 +196,9 @@ export default function App() {
         padHeight: df.padHeight || 300,
         consentNotice: df.consentNotice || 'By signing and submitting this form, I agree to sign electronically, with the same legal effect as a handwritten signature.',
         inkColor: df.inkColor || '#000000',
-        columnSpan: df.columnSpan || (finalType === 'Long Text' || finalType === 'Signature' ? 2 : 1),
+        fitMode: df.fitMode || 'stretch',
+        uploadingText: df.uploadingText || 'Uploading...',
+        columnSpan: df.columnSpan || (finalType === 'Long Text' || finalType === 'Signature' || finalType === 'Photo' || finalType === 'Image' ? 2 : 1),
         options: rawOptions,
         optionsCoordinates: isCb ? cbCoords : (df.optionsCoordinates || undefined),
         multipleChoices: df.multipleChoices ?? false,
@@ -448,6 +450,8 @@ export default function App() {
       'Date': 'Effective Date',
       'Checkbox': 'Checkboxes',
       'Signature': 'Signature',
+      'Photo': 'Photo',
+      'Image': 'Photo',
       'File Upload': 'Document Attachment',
       'Section Break': 'Section Break',
       'Section': 'Section Break',
@@ -459,6 +463,7 @@ export default function App() {
     const isDate = toolType === 'Date';
     const isCb = toolType === 'Checkbox';
     const isSig = toolType === 'Signature';
+    const isPhoto = toolType === 'Photo' || toolType === 'Image';
     const cbOpts = isCb ? ['Option 1', 'Option 2'] : undefined;
     const initialY = Math.min(25 + fields.length * 8, 80);
     const cbCoords = isCb ? getSyncedCheckboxCoordinates({
@@ -468,9 +473,11 @@ export default function App() {
 
     const newField = {
       id: newId,
-      type: toolType,
+      type: isPhoto ? 'Photo' : toolType,
       label: defaultLabels[toolType] || `${toolType} Field`,
-      placeholder: isSectionBreak ? 'Title' : (isPageBreak ? `Step ${newStepNum} Title` : (isDivider ? 'Divider Line' : isDate ? 'YYYY - MM - DD' : (toolType === 'Header' ? 'Section Title' : `Enter ${toolType.toLowerCase()}...`))),
+      placeholder: isPhoto ? 'Choose a photo or drag it here.' : (isSectionBreak ? 'Title' : (isPageBreak ? `Step ${newStepNum} Title` : (isDivider ? 'Divider Line' : isDate ? 'YYYY - MM - DD' : (toolType === 'Header' ? 'Section Title' : `Enter ${toolType.toLowerCase()}...`)))),
+      uploadingText: 'Uploading...',
+      fitMode: 'stretch', // 'stretch' (Stretch to Fill) | 'aspect' (Aspect Ratio Fit)
       format: isDate ? 'YYYY-MM-DD' : '',
       datePlaceholderYear: 'YYYY',
       datePlaceholderMonth: 'MM',
@@ -490,9 +497,9 @@ export default function App() {
       pdfOverflowSmaller: true,
       pdfOverflowWrap: true,
       pdfTextSpacing: 'Natural',
-      helperText: isSectionBreak ? 'Help text' : (isPageBreak ? 'Page break: divides the form into steps with a Next button' : (isDivider ? 'Divider line separating questions' : `Configured ${toolType.toLowerCase()} input`)),
+      helperText: isSectionBreak ? 'Help text' : (isPageBreak ? 'Page break: divides the form into steps with a Next button' : (isDivider ? 'Divider line separating questions' : isPhoto ? '' : `Configured ${toolType.toLowerCase()} input`)),
       value: '',
-      required: isSig ? true : false,
+      required: isSig || isPhoto ? true : false,
       readOnly: false,
       hidden: false,
       signMethodDraw: true,
@@ -512,7 +519,7 @@ export default function App() {
       prevButtonText: 'Back',
       buttonAlign: 'center',
       buttonHelp: '',
-      columnSpan: toolType === 'Long Text' || toolType === 'File Upload' || isDivider || isPageBreak || isSectionBreak || toolType === 'Header' ? 2 : 1,
+      columnSpan: toolType === 'Long Text' || toolType === 'File Upload' || isPhoto || isDivider || isPageBreak || isSectionBreak || toolType === 'Header' ? 2 : 1,
       options: toolType === 'Dropdown' ? ['Option A', 'Option B', 'Option C'] : cbOpts,
       optionsCoordinates: cbCoords,
       multipleChoices: false,
@@ -521,12 +528,12 @@ export default function App() {
       tickColor: '#000000',
       pdfMapping: {
         page: 1,
-        badgeW: isCb ? '36.0' : (isSig ? '220.0' : '240.0'),
-        badgeH: isSig ? '40.0' : '26.6',
+        badgeW: isCb ? '36.0' : (isSig ? '220.0' : (isPhoto ? '180.0' : '240.0')),
+        badgeH: isSig ? '40.0' : (isPhoto ? '60.0' : '26.6'),
         x: '24%',
         y: `${initialY}%`,
-        w: isCb ? '12%' : (isSig ? '35%' : '50%'),
-        h: isCb ? '4%' : (isSig ? '8%' : '5%'),
+        w: isCb ? '12%' : (isSig ? '35%' : (isPhoto ? '30%' : '50%')),
+        h: isCb ? '4%' : (isSig ? '8%' : (isPhoto ? '14%' : '5%')),
         optionsCoordinates: cbCoords
       }
     };

@@ -36,7 +36,9 @@ import {
   Heading,
   SeparatorHorizontal,
   GitBranch,
-  X
+  X,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
 import { PageBreakIcon, SectionBreakIcon } from './SidebarTools';
 import SignaturePadModal from './SignaturePadModal';
@@ -106,6 +108,22 @@ const FIELD_TYPE_INFO = {
     icon: UploadCloud,
     badgeClass: 'text-cyan-700 bg-cyan-50/90 border-cyan-200/80',
     iconColor: 'text-cyan-600'
+  },
+  'Photo': {
+    label: 'Photo Upload',
+    shortName: 'Photo',
+    desc: 'Image and photo uploader with stretch or aspect ratio fit',
+    icon: ImageIcon,
+    badgeClass: 'text-rose-700 bg-rose-50/90 border-rose-200/80',
+    iconColor: 'text-rose-600'
+  },
+  'Image': {
+    label: 'Photo Upload',
+    shortName: 'Photo',
+    desc: 'Image and photo uploader with stretch or aspect ratio fit',
+    icon: ImageIcon,
+    badgeClass: 'text-rose-700 bg-rose-50/90 border-rose-200/80',
+    iconColor: 'text-rose-600'
   },
   'Section Break': {
     label: 'Section Break',
@@ -694,6 +712,86 @@ export default function FormCanvas({
           </div>
         );
 
+      case 'Photo':
+      case 'Image':
+        return (
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const file = e.dataTransfer?.files?.[0];
+              if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (loadEvent) => {
+                  onUpdateField(field.id, { value: loadEvent.target.result });
+                };
+                reader.readAsDataURL(file);
+              }
+            }}
+            className="border border-dashed border-slate-300 rounded-lg bg-slate-50/40 p-4 flex flex-col items-center justify-center gap-1.5 transition"
+          >
+            <input
+              type="file"
+              id={`canvas-photo-input-${field.id}`}
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onload = (loadEvent) => {
+                    onUpdateField(field.id, { value: loadEvent.target.result });
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+            />
+            {field.value && typeof field.value === 'string' && (field.value.startsWith('data:image/') || field.value.startsWith('http') || field.value.startsWith('blob:')) ? (
+              <div className="relative group w-full flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+                <img
+                  src={field.value}
+                  alt={field.label || 'Uploaded photo'}
+                  className={`max-h-36 rounded border border-slate-200 bg-white shadow-2xs ${field.fitMode === 'aspect' ? 'object-contain' : 'object-cover w-full h-28'}`}
+                />
+                <div className="flex items-center gap-3 mt-2">
+                  <label
+                    htmlFor={`canvas-photo-input-${field.id}`}
+                    className="text-[11px] text-blue-600 hover:underline font-medium cursor-pointer"
+                  >
+                    Change photo
+                  </label>
+                  <span className="text-slate-300">•</span>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onUpdateField(field.id, { value: '' }); }}
+                    className="text-[11px] text-red-500 hover:text-red-700 hover:underline cursor-pointer"
+                  >
+                    Remove photo
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label
+                htmlFor={`canvas-photo-input-${field.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="flex flex-col items-center justify-center text-center py-2 cursor-pointer hover:opacity-85 transition w-full"
+              >
+                <div className="flex items-center gap-1.5 text-slate-700 font-semibold text-xs sm:text-sm">
+                  <Upload className="w-4 h-4 text-slate-600" />
+                  <span>{field.placeholder || 'Choose a photo or drag it here.'}</span>
+                </div>
+                <div className="text-[11px] text-slate-400 mt-1">
+                  {field.uploadingText || 'Uploading...'}
+                </div>
+              </label>
+            )}
+          </div>
+        );
+
       case 'Header':
         return (
           <div className="pt-2 pb-1 border-b border-slate-200 text-base font-bold text-slate-800">
@@ -738,7 +836,9 @@ export default function FormCanvas({
       isSection ||
       field.type === 'Long Text' ||
       field.type === 'Header' ||
-      field.type === 'File Upload';
+      field.type === 'File Upload' ||
+      field.type === 'Photo' ||
+      field.type === 'Image';
 
     const typeInfo = FIELD_TYPE_INFO[field.type] || FIELD_TYPE_INFO['Short Text'];
     const TypeIcon = typeInfo.icon;
@@ -1007,8 +1107,8 @@ export default function FormCanvas({
                       <div className="px-3 py-1 font-bold text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-100">
                         Switch Component Type
                       </div>
-                      {['Short Text', 'Long Text', 'Dropdown', 'Date', 'Checkbox', 'Signature', 'File Upload'].map(tKey => {
-                        const info = FIELD_TYPE_INFO[tKey];
+                      {['Short Text', 'Long Text', 'Dropdown', 'Date', 'Checkbox', 'Signature', 'Photo', 'File Upload'].map(tKey => {
+                        const info = FIELD_TYPE_INFO[tKey] || FIELD_TYPE_INFO['Short Text'];
                         const TIcon = info.icon;
                         return (
                           <button
