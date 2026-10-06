@@ -185,7 +185,8 @@ export default function FormCanvas({
   onSaveTemplate = () => {},
   isSavingTemplate = false,
   logicRules = [],
-  onNavigateToLogics = () => {}
+  onNavigateToLogics = () => {},
+  totalPages = 1
 }) {
   const [editingLabelId, setEditingLabelId] = useState(null);
   const [labelDraft, setLabelDraft] = useState('');
@@ -1128,14 +1129,32 @@ export default function FormCanvas({
                   )}
                 </div>
 
-                {/* PDF Page Sync Link indicator */}
-                <div
-                  title={`Dynamic sync enabled: bound to PDF Page ${field.pdfMapping?.page || 1}`}
-                  className="hidden sm:flex items-center gap-1 text-[10px] font-mono font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/60"
+                {/* PDF Page Sync Link indicator - clickable to switch page */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const curP = field.pdfMapping?.page || field.page || 1;
+                    const maxP = Math.max(totalPages || 1, fields.reduce((m, f) => Math.max(m, f.pdfMapping?.page || f.page || 1), 1), 2);
+                    const nextP = curP >= maxP ? 1 : curP + 1;
+                    onUpdateField(field.id, {
+                      page: nextP,
+                      pdfMapping: {
+                        ...(field.pdfMapping || {}),
+                        page: nextP
+                      }
+                    });
+                    const targetEl = document.getElementById(`pdf-page-${nextP}`);
+                    if (targetEl) {
+                      targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }}
+                  title={`Bound to PDF Page ${field.pdfMapping?.page || 1}. Click to switch to next page.`}
+                  className="hidden sm:flex items-center gap-1 text-[10px] font-mono font-medium text-slate-500 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 px-1.5 py-0.5 rounded border border-slate-200/60 transition cursor-pointer"
                 >
                   <Link2 className="w-2.5 h-2.5" />
                   <span>PDF P{field.pdfMapping?.page || 1}</span>
-                </div>
+                </button>
 
                 <button
                   type="button"

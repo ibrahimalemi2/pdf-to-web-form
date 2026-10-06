@@ -205,6 +205,57 @@ function PdfPageCard({
                     />
                   )}
 
+                  {/* Floating Page Badge & Quick Switcher when Selected and totalPages > 1 */}
+                  {isSelected && totalPages > 1 && (
+                    <div
+                      onMouseDown={(e) => e.stopPropagation()}
+                      className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-0.5 rounded-full shadow-lg border border-slate-700/80 flex items-center gap-1.5 z-40 whitespace-nowrap select-none pointer-events-auto"
+                    >
+                      <span className="text-cyan-300 font-semibold">Page {pageNum}</span>
+                      <span className="text-slate-600">|</span>
+                      <div className="flex items-center gap-1">
+                        {pageNum > 1 && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUpdateField(field.id, {
+                                page: pageNum - 1,
+                                pdfMapping: {
+                                  ...(field.pdfMapping || {}),
+                                  page: pageNum - 1
+                                }
+                              });
+                            }}
+                            title={`Move box to Page ${pageNum - 1}`}
+                            className="text-slate-300 hover:text-white px-1 py-0.2 hover:bg-slate-800 rounded cursor-pointer transition text-[9px]"
+                          >
+                            ← P{pageNum - 1}
+                          </button>
+                        )}
+                        {pageNum < totalPages && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUpdateField(field.id, {
+                                page: pageNum + 1,
+                                pdfMapping: {
+                                  ...(field.pdfMapping || {}),
+                                  page: pageNum + 1
+                                }
+                              });
+                            }}
+                            title={`Move box to Page ${pageNum + 1}`}
+                            className="text-slate-300 hover:text-white px-1 py-0.2 hover:bg-slate-800 rounded cursor-pointer transition text-[9px]"
+                          >
+                            P{pageNum + 1} →
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Corner and edge amber circular handles when selected */}
                   {isSelected && (
                     <>
@@ -426,7 +477,8 @@ export default function PdfViewer({
   onImportDetectedFields = null,
   detectedCount = 0,
   totalPages: propTotalPages = 1,
-  onUploadPdf = null
+  onUploadPdf = null,
+  onPageChange = () => {}
 }) {
   const [zoomLevel, setZoomLevel] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
@@ -512,11 +564,12 @@ export default function PdfViewer({
         const rect = pageEl.getBoundingClientRect();
         if (rect.top <= probeLine && rect.bottom >= probeLine) {
           setCurrentPage(p);
+          onPageChange(p);
           break;
         }
       }
     }
-  }, [pagesList]);
+  }, [pagesList, onPageChange]);
 
   // Smooth scroll to target page when page buttons clicked
   const scrollToPage = (targetPage) => {
@@ -525,6 +578,7 @@ export default function PdfViewer({
     if (targetEl) {
       targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
       setCurrentPage(validTarget);
+      onPageChange(validTarget);
     }
   };
 
@@ -823,23 +877,30 @@ export default function PdfViewer({
     setActiveToolMode('select');
   };
 
-  // 2. DRAG EXISTING BOX TO MOVE
+  // 2. DRAG EXISTING BOX TO MOVE (ACROSS PAGES)
   const handleBoxMouseDown = (e, field, pageNum) => {
     e.stopPropagation();
     onSelectField(field.id);
     if (activeToolMode === 'draw') return;
 
     const coords = getFieldCoordinates(field);
-    const origX = parseFloat(coords.x);
-    const origY = parseFloat(coords.y);
+    const boxEl = e.currentTarget;
+    const boxRect = boxEl.getBoundingClientRect();
+    const grabOffsetPxX = e.clientX - boxRect.left;
+    const grabOffsetPxY = e.clientY - boxRect.top;
 
     setDragState({
       fieldId: field.id,
-      pageNum,
+      initialPageNum: pageNum,
+      currentPageNum: pageNum,
       startX: e.clientX,
       startY: e.clientY,
-      origX,
-      origY
+      grabOffsetPxX,
+      grabOffsetPxY,
+      boxW: parseFloat(coords.w) || 30,
+      boxH: parseFloat(coords.h) || 14,
+      boxWidthPx: boxRect.width,
+      boxHeightPx: boxRect.height
     });
   };
 
@@ -862,7 +923,7 @@ export default function PdfViewer({
     });
   };
 
-  // 4. DRAG INDIVIDUAL CHECKBOX OPTION BOX
+  // 4. DRAG INDIVIDUAL CHECKBOX OPTION BOX (ACROSS PAGES)
   const handleCheckboxOptMouseDown = (e, field, pageNum, optIndex) => {
     e.stopPropagation();
     onSelectField(field.id);
@@ -872,14 +933,24 @@ export default function PdfViewer({
     const target = opts[optIndex];
     if (!target) return;
 
+    const boxEl = e.currentTarget;
+    const boxRect = boxEl.getBoundingClientRect();
+    const grabOffsetPxX = e.clientX - boxRect.left;
+    const grabOffsetPxY = e.clientY - boxRect.top;
+
     setCbDragState({
       fieldId: field.id,
-      pageNum,
+      initialPageNum: pageNum,
+      currentPageNum: pageNum,
       optIndex,
       startX: e.clientX,
       startY: e.clientY,
-      origX: parseFloat(target.x) || 24,
-      origY: parseFloat(target.y) || 28,
+      grabOffsetPxX,
+      grabOffsetPxY,
+      optW: parseFloat(target.w) || 3.0,
+      optH: parseFloat(target.h) || 2.4,
+      optWidthPx: boxRect.width,
+      optHeightPx: boxRect.height,
       hasMoved: false
     });
   };
@@ -909,28 +980,83 @@ export default function PdfViewer({
     onSelectField(field.id);
   };
 
-  // Global mouse move & up listeners for drag & resize across pages
+  // Global mouse move & up listeners for drag & resize across all pages with auto-scroll
   useEffect(() => {
     const handleGlobalMouseMove = (e) => {
       if (dragState) {
-        const pageEl = document.getElementById(`pdf-page-container-${dragState.pageNum}`);
-        if (!pageEl) return;
-        const rect = pageEl.getBoundingClientRect();
-        const deltaX = ((e.clientX - dragState.startX) / rect.width) * 100;
-        const deltaY = ((e.clientY - dragState.startY) / rect.height) * 100;
-        const newX = Math.max(0, Math.min(95, dragState.origX + deltaX));
-        const newY = Math.max(0, Math.min(95, dragState.origY + deltaY));
+        // Auto-scroll PDF container when dragging near top or bottom
+        if (scrollContainerRef.current) {
+          const scrollEl = scrollContainerRef.current;
+          const sRect = scrollEl.getBoundingClientRect();
+          const edgeZone = 80;
+          if (e.clientY < sRect.top + edgeZone && scrollEl.scrollTop > 0) {
+            const intensity = Math.min(1, (sRect.top + edgeZone - e.clientY) / edgeZone);
+            scrollEl.scrollTop -= Math.max(5, Math.round(20 * intensity));
+          } else if (e.clientY > sRect.bottom - edgeZone && scrollEl.scrollTop + scrollEl.clientHeight < scrollEl.scrollHeight) {
+            const intensity = Math.min(1, (e.clientY - (sRect.bottom - edgeZone)) / edgeZone);
+            scrollEl.scrollTop += Math.max(5, Math.round(20 * intensity));
+          }
+        }
 
-        const field = fields.find(f => f.id === dragState.fieldId);
-        if (field) {
-          onUpdateField(field.id, {
-            pdfMapping: {
-              ...(field.pdfMapping || {}),
-              page: dragState.pageNum,
-              x: `${newX.toFixed(1)}%`,
-              y: `${newY.toFixed(1)}%`
-            }
-          });
+        const desiredBoxLeft = e.clientX - dragState.grabOffsetPxX;
+        const desiredBoxTop = e.clientY - dragState.grabOffsetPxY;
+        const desiredBoxCenterY = desiredBoxTop + (dragState.boxHeightPx || 30) / 2;
+
+        // Detect which page container is under or closest to the dragged box
+        let targetPage = dragState.currentPageNum || dragState.initialPageNum || 1;
+        let minDistance = Infinity;
+
+        for (const p of pagesList) {
+          const pageContainer = document.getElementById(`pdf-page-container-${p}`);
+          if (!pageContainer) continue;
+          const pRect = pageContainer.getBoundingClientRect();
+
+          const isCursorInside = e.clientY >= pRect.top && e.clientY <= pRect.bottom;
+          const isBoxCenterInside = desiredBoxCenterY >= pRect.top && desiredBoxCenterY <= pRect.bottom;
+
+          if (isCursorInside || isBoxCenterInside) {
+            targetPage = p;
+            minDistance = 0;
+            break;
+          }
+
+          const dist = e.clientY < pRect.top
+            ? pRect.top - e.clientY
+            : e.clientY - pRect.bottom;
+
+          if (dist < minDistance) {
+            minDistance = dist;
+            targetPage = p;
+          }
+        }
+
+        const targetPageEl = document.getElementById(`pdf-page-container-${targetPage}`);
+        if (targetPageEl) {
+          const targetRect = targetPageEl.getBoundingClientRect();
+          const rawX = ((desiredBoxLeft - targetRect.left) / targetRect.width) * 100;
+          const rawY = ((desiredBoxTop - targetRect.top) / targetRect.height) * 100;
+
+          const boxW = dragState.boxW || 30;
+          const boxH = dragState.boxH || 14;
+          const maxX = Math.max(0, 100 - boxW);
+          const maxY = Math.max(0, 100 - boxH);
+
+          const newX = Math.max(0, Math.min(maxX, rawX));
+          const newY = Math.max(0, Math.min(maxY, rawY));
+
+          const field = fields.find(f => f.id === dragState.fieldId);
+          if (field) {
+            dragState.currentPageNum = targetPage;
+            onUpdateField(field.id, {
+              page: targetPage,
+              pdfMapping: {
+                ...(field.pdfMapping || {}),
+                page: targetPage,
+                x: `${newX.toFixed(1)}%`,
+                y: `${newY.toFixed(1)}%`
+              }
+            });
+          }
         }
       } else if (resizeState) {
         const pageEl = document.getElementById(`pdf-page-container-${resizeState.pageNum}`);
@@ -944,6 +1070,7 @@ export default function PdfViewer({
         const field = fields.find(f => f.id === resizeState.fieldId);
         if (field) {
           onUpdateField(field.id, {
+            page: resizeState.pageNum,
             pdfMapping: {
               ...(field.pdfMapping || {}),
               page: resizeState.pageNum,
@@ -957,40 +1084,92 @@ export default function PdfViewer({
           setHeightDraft((newH * pointsPerPercentH).toFixed(1));
         }
       } else if (cbDragState) {
-        const pageEl = document.getElementById(`pdf-page-container-${cbDragState.pageNum}`);
-        if (!pageEl) return;
-        const rect = pageEl.getBoundingClientRect();
-        const deltaX = ((e.clientX - cbDragState.startX) / rect.width) * 100;
-        const deltaY = ((e.clientY - cbDragState.startY) / rect.height) * 100;
-
-        if (Math.abs(deltaX) > 0.15 || Math.abs(deltaY) > 0.15) {
-          cbDragState.hasMoved = true;
+        if (scrollContainerRef.current) {
+          const scrollEl = scrollContainerRef.current;
+          const sRect = scrollEl.getBoundingClientRect();
+          const edgeZone = 80;
+          if (e.clientY < sRect.top + edgeZone && scrollEl.scrollTop > 0) {
+            const intensity = Math.min(1, (sRect.top + edgeZone - e.clientY) / edgeZone);
+            scrollEl.scrollTop -= Math.max(5, Math.round(20 * intensity));
+          } else if (e.clientY > sRect.bottom - edgeZone && scrollEl.scrollTop + scrollEl.clientHeight < scrollEl.scrollHeight) {
+            const intensity = Math.min(1, (e.clientY - (sRect.bottom - edgeZone)) / edgeZone);
+            scrollEl.scrollTop += Math.max(5, Math.round(20 * intensity));
+          }
         }
 
-        const newX = Math.max(0, Math.min(97, cbDragState.origX + deltaX));
-        const newY = Math.max(0, Math.min(98, cbDragState.origY + deltaY));
+        const desiredLeft = e.clientX - cbDragState.grabOffsetPxX;
+        const desiredTop = e.clientY - cbDragState.grabOffsetPxY;
+        const desiredCenterY = desiredTop + (cbDragState.optHeightPx || 20) / 2;
 
-        const field = fields.find(f => f.id === cbDragState.fieldId);
-        if (field) {
-          const currentOpts = getSyncedCheckboxCoordinates(field);
-          const updatedOpts = currentOpts.map((opt, idx) => {
-            if (idx === cbDragState.optIndex) {
-              return {
-                ...opt,
-                x: `${newX.toFixed(2)}%`,
-                y: `${newY.toFixed(2)}%`
-              };
-            }
-            return opt;
-          });
-          onUpdateField(field.id, {
-            optionsCoordinates: updatedOpts,
-            pdfMapping: {
-              ...(field.pdfMapping || {}),
-              page: cbDragState.pageNum,
-              optionsCoordinates: updatedOpts
-            }
-          });
+        let targetPage = cbDragState.currentPageNum || cbDragState.initialPageNum || 1;
+        let minDistance = Infinity;
+
+        for (const p of pagesList) {
+          const pageContainer = document.getElementById(`pdf-page-container-${p}`);
+          if (!pageContainer) continue;
+          const pRect = pageContainer.getBoundingClientRect();
+
+          const isCursorInside = e.clientY >= pRect.top && e.clientY <= pRect.bottom;
+          const isBoxCenterInside = desiredCenterY >= pRect.top && desiredCenterY <= pRect.bottom;
+
+          if (isCursorInside || isBoxCenterInside) {
+            targetPage = p;
+            minDistance = 0;
+            break;
+          }
+
+          const dist = e.clientY < pRect.top
+            ? pRect.top - e.clientY
+            : e.clientY - pRect.bottom;
+
+          if (dist < minDistance) {
+            minDistance = dist;
+            targetPage = p;
+          }
+        }
+
+        const targetPageEl = document.getElementById(`pdf-page-container-${targetPage}`);
+        if (targetPageEl) {
+          const targetRect = targetPageEl.getBoundingClientRect();
+          const rawX = ((desiredLeft - targetRect.left) / targetRect.width) * 100;
+          const rawY = ((desiredTop - targetRect.top) / targetRect.height) * 100;
+
+          const optW = cbDragState.optW || 3.0;
+          const optH = cbDragState.optH || 2.4;
+          const maxX = Math.max(0, 100 - optW);
+          const maxY = Math.max(0, 100 - optH);
+
+          const newX = Math.max(0, Math.min(maxX, rawX));
+          const newY = Math.max(0, Math.min(maxY, rawY));
+
+          if (Math.abs(e.clientX - cbDragState.startX) > 3 || Math.abs(e.clientY - cbDragState.startY) > 3) {
+            cbDragState.hasMoved = true;
+          }
+
+          const field = fields.find(f => f.id === cbDragState.fieldId);
+          if (field) {
+            cbDragState.currentPageNum = targetPage;
+            const currentOpts = getSyncedCheckboxCoordinates(field);
+            const updatedOpts = currentOpts.map((opt, idx) => {
+              if (idx === cbDragState.optIndex) {
+                return {
+                  ...opt,
+                  x: `${newX.toFixed(2)}%`,
+                  y: `${newY.toFixed(2)}%`
+                };
+              }
+              return opt;
+            });
+            onUpdateField(field.id, {
+              page: targetPage,
+              optionsCoordinates: updatedOpts,
+              pdfMapping: {
+                ...(field.pdfMapping || {}),
+                page: targetPage,
+                optionsCoordinates: updatedOpts
+              }
+            });
+          }
         }
       } else if (cbResizeState) {
         const pageEl = document.getElementById(`pdf-page-container-${cbResizeState.pageNum}`);
@@ -1019,6 +1198,7 @@ export default function PdfViewer({
             optionsCoordinates: updatedOpts,
             pdfMapping: {
               ...(field.pdfMapping || {}),
+              page: cbResizeState.pageNum,
               optionsCoordinates: updatedOpts
             }
           });
@@ -1062,7 +1242,7 @@ export default function PdfViewer({
       window.removeEventListener('mousemove', handleGlobalMouseMove);
       window.removeEventListener('mouseup', handleGlobalMouseUp);
     };
-  }, [dragState, resizeState, cbDragState, cbResizeState, fields, onUpdateField, pointsPerPercentW, pointsPerPercentH]);
+  }, [dragState, resizeState, cbDragState, cbResizeState, fields, onUpdateField, pointsPerPercentW, pointsPerPercentH, pagesList]);
 
   return (
     <section 

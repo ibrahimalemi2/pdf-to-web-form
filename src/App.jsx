@@ -41,6 +41,7 @@ export default function App() {
   const [isUploading, setIsUploading] = useState(false);
   const [detectedBackendFields, setDetectedBackendFields] = useState([]);
   const [showConnectors, setShowConnectors] = useState(true);
+  const [currentPdfPage, setCurrentPdfPage] = useState(1);
   const [formMeta, setFormMeta] = useState({
     title: 'Assignment Submission Form',
     description: 'Collects student assignment details and answers for parallel computing coursework.',
@@ -526,8 +527,9 @@ export default function App() {
       choicesPerRow: 2,
       tickFormat: 'Tick',
       tickColor: '#000000',
+      page: currentPdfPage || 1,
       pdfMapping: {
-        page: 1,
+        page: currentPdfPage || 1,
         badgeW: isCb ? '36.0' : (isSig ? '220.0' : (isPhoto ? '180.0' : '240.0')),
         badgeH: isSig ? '40.0' : (isPhoto ? '60.0' : '26.6'),
         x: '24%',
@@ -923,6 +925,7 @@ export default function App() {
             isSavingTemplate={isSavingTemplate}
             logicRules={logicRules}
             onNavigateToLogics={(fieldId) => handleOpenLogicDrawer(fieldId)}
+            totalPages={totalPages}
           />
 
         {/* Dynamic SVG Connector Lines between Canvas and PDF Viewer (only shown on hover or select) */}
@@ -970,6 +973,7 @@ export default function App() {
           onImportDetectedFields={detectedBackendFields.length > 0 ? handleImportDetectedFields : null}
           detectedCount={detectedBackendFields.length}
           onUploadPdf={handleUploadPdf}
+          onPageChange={setCurrentPdfPage}
         />
 
         {/* Option 3: Slide-Over Logic Drawer (Inside Design Canvas) */}
