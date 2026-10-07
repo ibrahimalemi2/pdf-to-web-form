@@ -303,40 +303,88 @@ export default function FieldPropertiesPanel({
             </div>
           </div>
 
-          {/* Row 2: Placeholder & Format matching Screenshots */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Placeholder Input (Date Segmented vs Standard Text) */}
-            <div className="space-y-1">
-              <label className="block text-xs font-normal text-slate-600">Placeholder</label>
-              {isDate ? (
-                /* Segmented Date Placeholder [ YYYY ] - [ MM ] - [ DD ] matching Pic 1 */
-                <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-2xs">
+          {/* Row 2: Placeholder & Format - Date (Exact match to Photo 2) vs Standard Fields */}
+          {isDate ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+              {/* Left: Inline Placeholder */}
+              <div className="flex items-center gap-3">
+                <label className="text-xs font-normal text-slate-700 shrink-0 select-none">
+                  Placeholder
+                </label>
+                <div className="flex-1 flex items-center justify-around bg-white border border-slate-200 hover:border-slate-300 rounded-[5px] h-9 px-3 shadow-2xs transition">
                   <input
                     type="text"
                     value={field.datePlaceholderYear || 'YYYY'}
                     onChange={(e) => onUpdateField(field.id, { datePlaceholderYear: e.target.value })}
-                    className="w-14 text-center font-mono text-xs text-slate-700 bg-transparent focus:outline-none border-b border-transparent focus:border-blue-500"
+                    className="w-12 text-center text-xs text-slate-800 font-normal bg-transparent focus:outline-none"
                     placeholder="YYYY"
                   />
-                  <span className="text-slate-300">-</span>
+                  <span className="text-slate-400 text-xs font-normal px-2 select-none">/</span>
                   <input
                     type="text"
                     value={field.datePlaceholderMonth || 'MM'}
                     onChange={(e) => onUpdateField(field.id, { datePlaceholderMonth: e.target.value })}
-                    className="w-10 text-center font-mono text-xs text-slate-700 bg-transparent focus:outline-none border-b border-transparent focus:border-blue-500"
+                    className="w-8 text-center text-xs text-slate-800 font-normal bg-transparent focus:outline-none"
                     placeholder="MM"
                   />
-                  <span className="text-slate-300">-</span>
+                  <span className="text-slate-400 text-xs font-normal px-2 select-none">/</span>
                   <input
                     type="text"
                     value={field.datePlaceholderDay || 'DD'}
                     onChange={(e) => onUpdateField(field.id, { datePlaceholderDay: e.target.value })}
-                    className="w-10 text-center font-mono text-xs text-slate-700 bg-transparent focus:outline-none border-b border-transparent focus:border-blue-500"
+                    className="w-8 text-center text-xs text-slate-800 font-normal bg-transparent focus:outline-none"
                     placeholder="DD"
                   />
                 </div>
-              ) : (
-                /* Normal Text / Long Text Placeholder matching Pic 3 */
+              </div>
+
+              {/* Right: Inline Format */}
+              <div className="flex items-center gap-3">
+                <label className="text-xs font-normal text-slate-700 shrink-0 select-none">
+                  Format
+                </label>
+                <div className="flex-1 flex items-stretch bg-white border border-slate-200 hover:border-slate-300 rounded-[5px] h-9 shadow-2xs overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition">
+                  <input
+                    type="text"
+                    value={field.format !== undefined ? field.format : 'YYYY-MM-DD'}
+                    onChange={(e) => onUpdateField(field.id, { format: e.target.value })}
+                    placeholder="YYYY-MM-DD"
+                    className="flex-1 min-w-0 bg-transparent px-3 py-1.5 text-xs text-slate-800 font-normal focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    title="PDF Format Print Settings"
+                    className="border-l border-slate-200 px-2.5 bg-slate-50/50 hover:bg-slate-100 flex items-center justify-center shrink-0 cursor-pointer transition"
+                  >
+                    <div className="relative inline-flex items-center justify-center">
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="w-4 h-4 text-slate-600"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="6 9 6 2 18 2 18 9" />
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                        <rect x="6" y="14" width="12" height="8" />
+                      </svg>
+                      <div className="absolute -bottom-0.5 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full flex items-center justify-center ring-1 ring-white">
+                        <svg viewBox="0 0 8 8" className="w-1.5 h-1.5 text-white" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M1.5 4l1.5 1.5 3.5-3.5" />
+                        </svg>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Normal Text / Long Text Placeholder matching Pic 3 */}
+              <div className="space-y-1">
+                <label className="block text-xs font-normal text-slate-600">Placeholder</label>
                 <input
                   type="text"
                   value={field.placeholder || ''}
@@ -344,30 +392,30 @@ export default function FieldPropertiesPanel({
                   placeholder="Placeholder"
                   className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs"
                 />
-              )}
-            </div>
+              </div>
 
-            {/* Format Input with Printer icon matching Pic 1 & 3 */}
-            <div className="space-y-1">
-              <label className="block text-xs font-normal text-slate-600">Format</label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={field.format !== undefined ? field.format : (isDate ? 'YYYY-MM-DD' : '')}
-                  onChange={(e) => onUpdateField(field.id, { format: e.target.value })}
-                  placeholder={isDate ? "YYYY-MM-DD" : "e.g, ##:##:##"}
-                  className="w-full bg-white border border-blue-500/80 rounded-lg px-3 py-2 pr-9 text-xs text-slate-800 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs"
-                />
-                <button
-                  type="button"
-                  title="PDF Print Formatting"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600 cursor-pointer p-0.5"
-                >
-                  <Printer className="w-3.5 h-3.5 text-emerald-600" />
-                </button>
+              {/* Format Input with Printer icon matching Pic 1 & 3 */}
+              <div className="space-y-1">
+                <label className="block text-xs font-normal text-slate-600">Format</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={field.format !== undefined ? field.format : ''}
+                    onChange={(e) => onUpdateField(field.id, { format: e.target.value })}
+                    placeholder="e.g, ##:##:##"
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 pr-9 text-xs text-slate-800 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs"
+                  />
+                  <button
+                    type="button"
+                    title="PDF Print Formatting"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600 cursor-pointer p-0.5"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-emerald-600" />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Row 3: Initial Value matching Screenshots [ Unset ▾ ] [ Initial Value ] */}
           <div className="space-y-1">
@@ -1152,7 +1200,7 @@ export default function FieldPropertiesPanel({
                   className="w-24 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:border-blue-500 shadow-2xs"
                   placeholder="2017"
                 />
-                <span className="text-slate-400 font-bold">-</span>
+                <span className="text-slate-400 font-normal select-none px-1 text-xs">/</span>
                 <input
                   type="text"
                   value={dateMonth}
@@ -1164,7 +1212,7 @@ export default function FieldPropertiesPanel({
                   className="w-16 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:border-blue-500 shadow-2xs"
                   placeholder="12"
                 />
-                <span className="text-slate-400 font-bold">-</span>
+                <span className="text-slate-400 font-normal select-none px-1 text-xs">/</span>
                 <input
                   type="text"
                   value={dateDay}
