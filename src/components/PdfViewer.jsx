@@ -281,7 +281,20 @@ function PdfPageCard({
 
                   {/* Live Text, Photo, or Signature Value display inside box */}
                   {field.value ? (
-                    <div className="absolute inset-0 px-1 py-0.5 text-[10px] font-medium text-slate-800 pointer-events-none truncate overflow-hidden flex items-center justify-center">
+                    <div
+                      className={`absolute inset-0 px-1.5 py-0.5 text-[10px] pointer-events-none truncate overflow-hidden flex items-center ${
+                        field.type === 'Signature' || field.type === 'Photo' || field.type === 'Image'
+                          ? 'justify-center'
+                          : (field.pdfAlign === 'center' ? 'justify-center text-center' : field.pdfAlign === 'right' ? 'justify-end text-right' : 'justify-start text-left')
+                      }`}
+                      style={{
+                        textAlign: field.pdfAlign || 'left',
+                        fontFamily: field.pdfFont ? `${field.pdfFont}, sans-serif` : undefined,
+                        color: field.pdfFontColor || '#0f172a',
+                        fontWeight: field.pdfBold ? 'bold' : 'normal',
+                        letterSpacing: field.pdfLetterSpacing ? `${field.pdfLetterSpacing}px` : undefined
+                      }}
+                    >
                       {(field.type === 'Photo' || field.type === 'Image' || field.type === 'Signature') && typeof field.value === 'string' && (field.value.startsWith('data:image/') || field.value.startsWith('http') || field.value.startsWith('blob:')) ? (
                         <img
                           src={field.value}
@@ -298,14 +311,38 @@ function PdfPageCard({
                           {field.value}
                         </span>
                       ) : (
-                        field.value
+                        <span className="truncate w-full block" style={{ textAlign: field.pdfAlign || 'left' }}>
+                          {field.value}
+                        </span>
                       )}
                     </div>
                   ) : (
-                    (field.type === 'Photo' || field.type === 'Image') && (
+                    (field.type === 'Photo' || field.type === 'Image') ? (
                       <div className="absolute inset-0 flex items-center justify-center gap-1 text-[10px] text-cyan-900/60 font-medium pointer-events-none select-none px-1">
                         <ImageIcon className="w-3 h-3 text-cyan-700/70 shrink-0" />
                         <span className="truncate max-w-[85%]">{field.label || 'Photo'}</span>
+                      </div>
+                    ) : (
+                      /* Ghost Preview when value is empty: reflects left/center/right alignment */
+                      <div
+                        className={`absolute inset-0 px-2 py-0.5 text-[10px] pointer-events-none truncate overflow-hidden flex items-center ${
+                          field.pdfAlign === 'center' ? 'justify-center text-center' : field.pdfAlign === 'right' ? 'justify-end text-right' : 'justify-start text-left'
+                        }`}
+                        style={{
+                          textAlign: field.pdfAlign || 'left',
+                          fontFamily: field.pdfFont ? `${field.pdfFont}, sans-serif` : undefined,
+                          fontWeight: field.pdfBold ? 'bold' : 'normal',
+                          letterSpacing: field.pdfLetterSpacing ? `${field.pdfLetterSpacing}px` : undefined
+                        }}
+                      >
+                        <span
+                          className={`truncate select-none w-full block ${
+                            isSelected ? 'text-slate-900 font-semibold' : 'text-slate-700/70 italic'
+                          }`}
+                          style={{ textAlign: field.pdfAlign || 'left' }}
+                        >
+                          {field.label || field.placeholder || 'Sample Text'}
+                        </span>
                       </div>
                     )
                   )}

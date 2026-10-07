@@ -874,7 +874,8 @@ export default function FieldPropertiesPanel({
                     pdfFont: 'Roboto',
                     pdfFontSize: 10,
                     pdfLetterSpacing: 0,
-                    pdfLineSpacing: 2
+                    pdfLineSpacing: 2,
+                    pdfAlign: field.align || 'left'
                   });
                 }}
                 className="text-xs text-[#1877f2] font-semibold hover:underline cursor-pointer"
@@ -1122,15 +1123,24 @@ export default function FieldPropertiesPanel({
           </div>
 
           {/* Dashed Rounded Preview Container */}
-          <div className="border border-dashed border-slate-300 rounded-xl p-5 bg-white shadow-2xs">
+          <div className="border border-dashed border-slate-300 rounded-xl p-5 bg-white shadow-2xs space-y-3">
             {/* Field Label with asterisk if required */}
-            <div className="text-xs font-semibold text-slate-800 mb-2">
+            <div style={{ textAlign: field.align || 'left' }} className="text-xs font-semibold text-slate-800 mb-1">
               {field.label || 'Field Label'}{field.required ? '*' : ''}
             </div>
 
+            {/* Field Helper text if present */}
+            {field.helperText && (
+              <p style={{ textAlign: field.align || 'left' }} className="text-[11px] text-slate-400 -mt-0.5 mb-2">
+                {field.helperText}
+              </p>
+            )}
+
             {/* PREVIEW 1: Date Field Segmented Input [ 2017 ] - [ 12 ] - [ 15 ] matching Pic 2 */}
             {isDate && (
-              <div className="flex items-center gap-2 max-w-sm">
+              <div className={`w-full flex items-center gap-2 ${
+                field.align === 'center' ? 'justify-center' : field.align === 'right' ? 'justify-end' : 'justify-start'
+              }`}>
                 <input
                   type="text"
                   value={dateYear}
@@ -1138,7 +1148,8 @@ export default function FieldPropertiesPanel({
                     const newYear = e.target.value;
                     onUpdateField(field.id, { value: `${newYear}-${dateMonth}-${dateDay}` });
                   }}
-                  className="w-24 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-center font-mono text-slate-800 focus:outline-none focus:border-blue-500 shadow-2xs"
+                  style={{ textAlign: field.align || 'center' }}
+                  className="w-24 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:border-blue-500 shadow-2xs"
                   placeholder="2017"
                 />
                 <span className="text-slate-400 font-bold">-</span>
@@ -1149,7 +1160,8 @@ export default function FieldPropertiesPanel({
                     const newMonth = e.target.value;
                     onUpdateField(field.id, { value: `${dateYear}-${newMonth}-${dateDay}` });
                   }}
-                  className="w-16 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-center font-mono text-slate-800 focus:outline-none focus:border-blue-500 shadow-2xs"
+                  style={{ textAlign: field.align || 'center' }}
+                  className="w-16 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:border-blue-500 shadow-2xs"
                   placeholder="12"
                 />
                 <span className="text-slate-400 font-bold">-</span>
@@ -1160,7 +1172,8 @@ export default function FieldPropertiesPanel({
                     const newDay = e.target.value;
                     onUpdateField(field.id, { value: `${dateYear}-${dateMonth}-${newDay}` });
                   }}
-                  className="w-16 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-center font-mono text-slate-800 focus:outline-none focus:border-blue-500 shadow-2xs"
+                  style={{ textAlign: field.align || 'center' }}
+                  className="w-16 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:border-blue-500 shadow-2xs"
                   placeholder="15"
                 />
               </div>
@@ -1173,8 +1186,9 @@ export default function FieldPropertiesPanel({
                   type="text"
                   value={field.value || ''}
                   onChange={(e) => onUpdateField(field.id, { value: e.target.value })}
-                  placeholder={field.placeholder || ''}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-2xs"
+                  placeholder={field.placeholder || 'Enter short text...'}
+                  style={{ textAlign: field.align || 'left' }}
+                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-2xs"
                 />
               </div>
             )}
@@ -1187,10 +1201,42 @@ export default function FieldPropertiesPanel({
                   value={field.value || ''}
                   onChange={(e) => onUpdateField(field.id, { value: e.target.value })}
                   placeholder={field.placeholder || 'Enter notes or paragraphs...'}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-2xs resize-none"
+                  style={{ textAlign: field.align || 'left' }}
+                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 shadow-2xs resize-none"
                 />
               </div>
             )}
+
+            {/* PDF Appearance Box Preview */}
+            <div className="mt-4 pt-3 border-t border-dashed border-slate-200">
+              <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1.5 font-medium">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                  <span>PDF Stamped Appearance Preview</span>
+                </span>
+                <span className="font-mono text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded font-semibold uppercase">{field.pdfAlign || 'left'} aligned</span>
+              </div>
+              <div
+                className={`w-full bg-[#f0f9ff] border border-cyan-400/80 rounded-md p-2.5 flex items-center min-h-[38px] ${
+                  field.pdfAlign === 'center' ? 'justify-center text-center' : field.pdfAlign === 'right' ? 'justify-end text-right' : 'justify-start text-left'
+                }`}
+                style={{ textAlign: field.pdfAlign || 'left' }}
+              >
+                <span
+                  style={{
+                    textAlign: field.pdfAlign || 'left',
+                    fontFamily: field.pdfFont ? `${field.pdfFont}, sans-serif` : 'Roboto, sans-serif',
+                    fontSize: field.pdfFontSize ? `${field.pdfFontSize}px` : '11px',
+                    color: field.pdfFontColor || '#000000',
+                    fontWeight: field.pdfBold ? 'bold' : 'normal',
+                    letterSpacing: field.pdfLetterSpacing ? `${field.pdfLetterSpacing}px` : undefined
+                  }}
+                  className="truncate max-w-full font-medium"
+                >
+                  {field.value || field.label || 'Sample Stamped Text'}
+                </span>
+              </div>
+            </div>
 
             {/* PREVIEW 4: Checkbox Group */}
             {isCheckbox && (
@@ -1198,6 +1244,8 @@ export default function FieldPropertiesPanel({
                 field.choicesPerRow === 1 ? 'grid-cols-1' :
                 field.choicesPerRow === 3 ? 'grid-cols-3' :
                 field.choicesPerRow === 4 ? 'grid-cols-4' : 'grid-cols-2'
+              } ${
+                field.align === 'center' ? 'justify-items-center' : field.align === 'right' ? 'justify-items-end' : 'justify-items-start'
               }`}>
                 {(field.options || ['Option 1', 'Option 2']).map((opt, idx) => {
                   const isChecked = Array.isArray(field.value)
@@ -1242,10 +1290,13 @@ export default function FieldPropertiesPanel({
 
             {/* PREVIEW 5: Dropdown Menu */}
             {isDropdown && (
-              <div className="relative max-w-sm">
+              <div className={`relative w-full max-w-sm ${
+                field.align === 'center' ? 'mx-auto' : field.align === 'right' ? 'ml-auto' : ''
+              }`}>
                 <select
                   value={field.value || ''}
                   onChange={(e) => onUpdateField(field.id, { value: e.target.value })}
+                  style={{ textAlign: field.align || 'left' }}
                   className="w-full appearance-none bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
                 >
                   <option value="">Select an option...</option>
@@ -2670,10 +2721,10 @@ export default function FieldPropertiesPanel({
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => onUpdateField(field.id, { align: 'left' })}
+                onClick={() => onUpdateField(field.id, { align: 'left', imageLocation: 'left' })}
                 title="Align Left"
                 className={`w-6 h-6 flex items-center justify-center rounded-[3px] transition cursor-pointer ${
-                  (field.align || 'left') === 'left'
+                  (field.align || field.imageLocation || 'left') === 'left'
                     ? 'bg-[#1877f2] text-white shadow-2xs'
                     : 'bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-700'
                 }`}
@@ -2686,10 +2737,10 @@ export default function FieldPropertiesPanel({
               </button>
               <button
                 type="button"
-                onClick={() => onUpdateField(field.id, { align: 'center' })}
+                onClick={() => onUpdateField(field.id, { align: 'center', imageLocation: 'center' })}
                 title="Align Center"
                 className={`w-6 h-6 flex items-center justify-center rounded-[3px] transition cursor-pointer ${
-                  field.align === 'center'
+                  (field.align || field.imageLocation) === 'center'
                     ? 'bg-[#1877f2] text-white shadow-2xs'
                     : 'bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-700'
                 }`}
@@ -2702,10 +2753,10 @@ export default function FieldPropertiesPanel({
               </button>
               <button
                 type="button"
-                onClick={() => onUpdateField(field.id, { align: 'right' })}
+                onClick={() => onUpdateField(field.id, { align: 'right', imageLocation: 'right' })}
                 title="Align Right"
                 className={`w-6 h-6 flex items-center justify-center rounded-[3px] transition cursor-pointer ${
-                  field.align === 'right'
+                  (field.align || field.imageLocation) === 'right'
                     ? 'bg-[#1877f2] text-white shadow-2xs'
                     : 'bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-700'
                 }`}
@@ -3013,10 +3064,10 @@ export default function FieldPropertiesPanel({
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => onUpdateField(field.id, { align: 'left' })}
+                onClick={() => onUpdateField(field.id, { align: 'left', imageLocation: 'left' })}
                 title="Align Left"
                 className={`w-6 h-6 flex items-center justify-center rounded-[3px] transition cursor-pointer ${
-                  (field.align || 'left') === 'left'
+                  (field.align || field.imageLocation || 'left') === 'left'
                     ? 'bg-[#1877f2] text-white shadow-2xs'
                     : 'bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-700'
                 }`}
@@ -3029,10 +3080,10 @@ export default function FieldPropertiesPanel({
               </button>
               <button
                 type="button"
-                onClick={() => onUpdateField(field.id, { align: 'center' })}
+                onClick={() => onUpdateField(field.id, { align: 'center', imageLocation: 'center' })}
                 title="Align Center"
                 className={`w-6 h-6 flex items-center justify-center rounded-[3px] transition cursor-pointer ${
-                  field.align === 'center'
+                  (field.align || field.imageLocation) === 'center'
                     ? 'bg-[#1877f2] text-white shadow-2xs'
                     : 'bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-700'
                 }`}
@@ -3045,10 +3096,10 @@ export default function FieldPropertiesPanel({
               </button>
               <button
                 type="button"
-                onClick={() => onUpdateField(field.id, { align: 'right' })}
+                onClick={() => onUpdateField(field.id, { align: 'right', imageLocation: 'right' })}
                 title="Align Right"
                 className={`w-6 h-6 flex items-center justify-center rounded-[3px] transition cursor-pointer ${
-                  field.align === 'right'
+                  (field.align || field.imageLocation) === 'right'
                     ? 'bg-[#1877f2] text-white shadow-2xs'
                     : 'bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-700'
                 }`}
@@ -3139,8 +3190,8 @@ export default function FieldPropertiesPanel({
                   <input
                     type="radio"
                     name={`imageLocation_${field.id}`}
-                    checked={(field.imageLocation || 'left') === 'left'}
-                    onChange={() => onUpdateField(field.id, { imageLocation: 'left' })}
+                    checked={(field.align || field.imageLocation || 'left') === 'left'}
+                    onChange={() => onUpdateField(field.id, { imageLocation: 'left', align: 'left' })}
                     className="w-3.5 h-3.5 text-[#1877f2] focus:ring-0 cursor-pointer accent-[#1877f2]"
                   />
                   <span className="text-xs font-normal text-slate-700">Left</span>
@@ -3149,8 +3200,8 @@ export default function FieldPropertiesPanel({
                   <input
                     type="radio"
                     name={`imageLocation_${field.id}`}
-                    checked={field.imageLocation === 'center'}
-                    onChange={() => onUpdateField(field.id, { imageLocation: 'center' })}
+                    checked={(field.align || field.imageLocation) === 'center'}
+                    onChange={() => onUpdateField(field.id, { imageLocation: 'center', align: 'center' })}
                     className="w-3.5 h-3.5 text-[#1877f2] focus:ring-0 cursor-pointer accent-[#1877f2]"
                   />
                   <span className="text-xs font-normal text-slate-700">Center</span>
@@ -3159,8 +3210,8 @@ export default function FieldPropertiesPanel({
                   <input
                     type="radio"
                     name={`imageLocation_${field.id}`}
-                    checked={field.imageLocation === 'right'}
-                    onChange={() => onUpdateField(field.id, { imageLocation: 'right' })}
+                    checked={(field.align || field.imageLocation) === 'right'}
+                    onChange={() => onUpdateField(field.id, { imageLocation: 'right', align: 'right' })}
                     className="w-3.5 h-3.5 text-[#1877f2] focus:ring-0 cursor-pointer accent-[#1877f2]"
                   />
                   <span className="text-xs font-normal text-slate-700">Right</span>
@@ -3298,9 +3349,9 @@ export default function FieldPropertiesPanel({
           <div className="border border-dashed border-slate-300 rounded-[4px] p-6 bg-white transition-all min-h-[140px] flex items-center">
             <div
               className={`w-full flex ${
-                field.imageLocation === 'center'
+                (field.align || field.imageLocation) === 'center'
                   ? 'justify-center'
-                  : field.imageLocation === 'right'
+                  : (field.align || field.imageLocation) === 'right'
                   ? 'justify-end'
                   : 'justify-start'
               }`}

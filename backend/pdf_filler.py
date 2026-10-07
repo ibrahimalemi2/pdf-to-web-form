@@ -143,13 +143,16 @@ def fill_pdf_template(
             if not val_str:
                 continue
 
-            text_color = (0.05, 0.08, 0.16)
+            text_color = parse_hex_color(field.get("pdfFontColor"), default=(0.05, 0.08, 0.16))
+            pdf_align = str(field.get("pdfAlign") or "left").strip().lower()
+            align_code = 1 if pdf_align == "center" else (2 if pdf_align == "right" else 0)
+            fontname = "helv-bold" if field.get("pdfBold") else "helv"
 
             if field_type == "Long Text":
                 # Paragraph with multiple lines
                 fontsize = min(10.0, max(7.0, rect.height * 0.28))
                 while fontsize >= 6.0:
-                    res = page.insert_textbox(rect, val_str, fontsize=fontsize, fontname="helv", color=text_color)
+                    res = page.insert_textbox(rect, val_str, fontsize=fontsize, fontname=fontname, color=text_color, align=align_code)
                     if res >= 0:
                         break
                     fontsize -= 0.5
@@ -157,7 +160,7 @@ def fill_pdf_template(
                 # Single line text / dropdown / date
                 fontsize = min(11.0, max(7.5, rect.height * 0.65))
                 while fontsize >= 6.0:
-                    res = page.insert_textbox(rect, val_str, fontsize=fontsize, fontname="helv", color=text_color)
+                    res = page.insert_textbox(rect, val_str, fontsize=fontsize, fontname=fontname, color=text_color, align=align_code)
                     if res >= 0:
                         break
                     fontsize -= 0.5

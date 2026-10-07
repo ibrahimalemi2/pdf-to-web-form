@@ -559,6 +559,7 @@ export default function FormCanvas({
             value={field.value || ''}
             onChange={(e) => onUpdateField(field.id, { value: e.target.value })}
             placeholder={field.placeholder || 'Enter detailed response...'}
+            style={{ textAlign: field.align || 'left' }}
             className={`w-full text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition resize-none ${
               field.readOnly ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''
             }`}
@@ -572,6 +573,7 @@ export default function FormCanvas({
               disabled={field.readOnly}
               value={field.value || (field.options && field.options[0]) || ''}
               onChange={(e) => onUpdateField(field.id, { value: e.target.value })}
+              style={{ textAlign: field.align || 'left' }}
               className={`w-full text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 pr-8 text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 appearance-none transition ${
                 field.readOnly ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''
               }`}
@@ -594,7 +596,14 @@ export default function FormCanvas({
               readOnly={field.readOnly}
               value={field.value || ''}
               onChange={(e) => onUpdateField(field.id, { value: e.target.value })}
+              style={{ textAlign: field.align || 'left' }}
               className={`w-full text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition ${
+                field.align === 'center'
+                  ? 'text-center [&::-webkit-datetime-edit]:flex [&::-webkit-datetime-edit]:justify-center [&::-webkit-datetime-edit-fields-wrapper]:justify-center'
+                  : field.align === 'right'
+                  ? 'text-right [&::-webkit-datetime-edit]:flex [&::-webkit-datetime-edit]:justify-end [&::-webkit-datetime-edit-fields-wrapper]:justify-end'
+                  : 'text-left [&::-webkit-datetime-edit]:flex [&::-webkit-datetime-edit]:justify-start'
+              } ${
                 field.readOnly ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''
               }`}
             />
@@ -905,6 +914,7 @@ export default function FormCanvas({
             value={field.value || ''}
             onChange={(e) => onUpdateField(field.id, { value: e.target.value })}
             placeholder={field.placeholder || 'e.g. Enter short text...'}
+            style={{ textAlign: field.align || 'left' }}
             className={`w-full text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all ${
               field.readOnly ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''
             }`}
@@ -1240,9 +1250,10 @@ export default function FormCanvas({
                   <div
                     onClick={(e) => startLabelEdit(field, e)}
                     title="Double click to edit label"
+                    style={{ textAlign: field.align || 'left' }}
                     className="flex items-center gap-1.5 cursor-text group/label truncate max-w-[200px] sm:max-w-[260px]"
                   >
-                    <span className="text-xs font-semibold text-slate-700 hover:text-blue-600 transition-colors truncate">
+                    <span style={{ textAlign: field.align || 'left' }} className="text-xs font-semibold text-slate-700 hover:text-blue-600 transition-colors truncate">
                       {field.label}
                     </span>
                     <Edit2 className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover/label:opacity-100 transition-opacity shrink-0" />
@@ -1339,7 +1350,7 @@ export default function FormCanvas({
 
             {/* Helper text / Status Badges */}
             <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-100 pt-1.5">
-              <span className="truncate max-w-[200px]" title={typeInfo.label}>
+              <span className="truncate max-w-[200px]" title={typeInfo.label} style={{ textAlign: field.align || 'left' }}>
                 {field.helperText || typeInfo.label}
               </span>
               <div className="flex items-center gap-1.5 shrink-0">

@@ -450,6 +450,7 @@ export default function PreviewMode({
             <select
               value={val}
               onChange={(e) => handleInputChange(field.id, e.target.value)}
+              style={{ textAlign: field.align || 'left' }}
               className={`w-full h-10 bg-white border rounded-md px-3 pr-8 text-sm text-slate-800 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 appearance-none transition shadow-2xs cursor-pointer ${
                 hasErr ? 'border-red-500 ring-1 ring-red-500 bg-red-50/20' : 'border-slate-300 hover:border-slate-400'
               }`}
@@ -473,6 +474,7 @@ export default function PreviewMode({
               value={val}
               onChange={(e) => handleInputChange(field.id, e.target.value)}
               placeholder={field.placeholder || 'YYYY-MM-DD'}
+              style={{ textAlign: field.align || 'left' }}
               className={`w-full h-10 bg-white border rounded-md px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition shadow-2xs ${
                 hasErr ? 'border-red-500 ring-1 ring-red-500 bg-red-50/20' : 'border-slate-300 hover:border-slate-400'
               }`}
@@ -877,6 +879,7 @@ export default function PreviewMode({
               value={val}
               onChange={(e) => handleInputChange(field.id, e.target.value)}
               placeholder={field.placeholder || ''}
+              style={{ textAlign: field.align || 'left' }}
               className={`w-full bg-white border rounded-md p-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition shadow-2xs resize-y min-h-[90px] ${
                 hasErr ? 'border-red-500 ring-1 ring-red-500 bg-red-50/20' : 'border-slate-300 hover:border-slate-400'
               }`}
@@ -890,6 +893,7 @@ export default function PreviewMode({
             value={val}
             onChange={(e) => handleInputChange(field.id, e.target.value)}
             placeholder={field.placeholder || ''}
+            style={{ textAlign: field.align || 'left' }}
             className={`w-full h-10 bg-white border rounded-md px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition shadow-2xs ${
               hasErr ? 'border-red-500 ring-1 ring-red-500 bg-red-50/20' : 'border-slate-300 hover:border-slate-400'
             }`}
@@ -912,17 +916,19 @@ export default function PreviewMode({
             value={val}
             onChange={(e) => handleInputChange(field.id, e.target.value)}
             placeholder={field.placeholder || "Type your detailed answer here..."}
+            style={{ textAlign: field.align || 'left' }}
             className="w-full text-sm sm:text-base border-b-2 border-slate-300 focus:border-blue-600 pb-2 bg-transparent focus:outline-none transition leading-relaxed resize-none placeholder:text-slate-400"
           />
         );
 
       case 'Dropdown':
         return (
-          <div className="relative max-w-sm">
+          <div className={`relative max-w-sm ${field.align === 'center' ? 'mx-auto' : field.align === 'right' ? 'ml-auto' : ''}`}>
             <select
               autoFocus
               value={val}
               onChange={(e) => handleInputChange(field.id, e.target.value)}
+              style={{ textAlign: field.align || 'left' }}
               className="w-full text-base sm:text-lg border-b-2 border-slate-300 focus:border-blue-600 pb-2 bg-transparent focus:outline-none transition cursor-pointer"
             >
               <option value="">{field.placeholder || "Select your option..."}</option>
@@ -938,13 +944,14 @@ export default function PreviewMode({
 
       case 'Date':
         return (
-          <div className="max-w-xs">
+          <div className={`max-w-xs ${field.align === 'center' ? 'mx-auto' : field.align === 'right' ? 'ml-auto' : ''}`}>
             <input
               type="date"
               autoFocus
               value={val}
               onChange={(e) => handleInputChange(field.id, e.target.value)}
               placeholder={field.placeholder || 'YYYY-MM-DD'}
+              style={{ textAlign: field.align || 'left' }}
               className="w-full text-base sm:text-lg border-b-2 border-slate-300 focus:border-blue-600 pb-2 bg-transparent focus:outline-none transition placeholder:text-slate-400"
             />
           </div>
@@ -1164,6 +1171,7 @@ export default function PreviewMode({
               if (e.key === 'Enter') handleConversationalNext();
             }}
             placeholder={field.placeholder || "Type your answer here..."}
+            style={{ textAlign: field.align || 'left' }}
             className="w-full text-base sm:text-lg border-b-2 border-slate-300 focus:border-blue-600 pb-2 bg-transparent focus:outline-none transition placeholder:text-slate-400"
           />
         );
@@ -1560,15 +1568,16 @@ export default function PreviewMode({
                         <div
                           key={field.id}
                           className={isSpan2 ? 'sm:col-span-2' : 'sm:col-span-1'}
+                          style={{ textAlign: field.align || 'left' }}
                         >
-                          <label className="block text-xs sm:text-[13px] font-semibold text-slate-800 mb-1.5">
+                          <label className="block text-xs sm:text-[13px] font-semibold text-slate-800 mb-1.5" style={{ textAlign: field.align || 'left' }}>
                             {cleanLbl}
                             {field.required && (
                               <span className="text-red-500 font-bold ml-0.5">*</span>
                             )}
                           </label>
                           {field.helperText && (
-                            <p className="text-[11px] text-slate-400 -mt-0.5 mb-1.5">{field.helperText}</p>
+                            <p className="text-[11px] text-slate-400 -mt-0.5 mb-1.5" style={{ textAlign: field.align || 'left' }}>{field.helperText}</p>
                           )}
 
                           {renderClassicInput(field)}
@@ -1721,8 +1730,10 @@ export default function PreviewMode({
 
                 {/* Active Question Prompt */}
                 {currentConversationalField ? (
-                  <div>
-                    <div className="flex items-baseline gap-2 mb-2">
+                  <div style={{ textAlign: currentConversationalField.align || 'left' }}>
+                    <div className={`flex items-baseline gap-2 mb-2 ${
+                      currentConversationalField.align === 'center' ? 'justify-center' : currentConversationalField.align === 'right' ? 'justify-end' : 'justify-start'
+                    }`}>
                       <span className="text-blue-600 font-mono font-bold text-sm">
                         {currentStepIndex + 1} →
                       </span>
@@ -1732,12 +1743,12 @@ export default function PreviewMode({
                       </h2>
                     </div>
 
-                    <p className="text-xs text-slate-500 mb-6 pl-6">
+                    <p className={`text-xs text-slate-500 mb-6 ${currentConversationalField.align === 'center' ? '' : currentConversationalField.align === 'right' ? 'pr-6' : 'pl-6'}`}>
                       {currentConversationalField.helperText || "Please enter your response below."}
                     </p>
 
                     {/* Input Field */}
-                    <div className="pl-6 mb-8">
+                    <div className={`mb-8 ${currentConversationalField.align === 'center' ? 'flex flex-col items-center' : currentConversationalField.align === 'right' ? 'flex flex-col items-end pr-6' : 'pl-6'}`}>
                       {renderConversationalInput(currentConversationalField)}
 
                       {errors[currentConversationalField.id] && (
