@@ -279,7 +279,7 @@ export default function PreviewMode({
     currentFields.forEach(f => {
       const isHidden = dynamicStates[f.id]?.hidden ?? f.hidden;
       const isRequired = dynamicStates[f.id]?.required ?? f.required;
-      if (isHidden || f.type === 'Header' || f.type === 'Section' || f.type === 'Section Break' || f.type === 'Page Break' || f.type === 'Divider') return;
+      if (isHidden || f.type === 'Header' || f.type === 'Section' || f.type === 'Section Break' || f.type === 'Page Break' || f.type === 'Divider' || f.type === 'Image' || (f.type === 'Photo' && f.label?.trim().toLowerCase().includes('image'))) return;
       if (isRequired) {
         const val = formData[f.id];
         if (f.type === 'Checkbox') {
@@ -313,7 +313,7 @@ export default function PreviewMode({
       stepItem.fields.forEach(f => {
         const isHidden = dynamicStates[f.id]?.hidden ?? f.hidden;
         const isRequired = dynamicStates[f.id]?.required ?? f.required;
-        if (isHidden || f.type === 'Header' || f.type === 'Section' || f.type === 'Section Break' || f.type === 'Page Break' || f.type === 'Divider') return;
+        if (isHidden || f.type === 'Header' || f.type === 'Section' || f.type === 'Section Break' || f.type === 'Page Break' || f.type === 'Divider' || f.type === 'Image' || (f.type === 'Photo' && f.label?.trim().toLowerCase().includes('image'))) return;
         if (isRequired) {
           const val = formData[f.id];
           if (f.type === 'Checkbox') {
@@ -387,7 +387,7 @@ export default function PreviewMode({
 
   // Filter interactive fields for Conversational mode (excluding headers, dividers, and conditionally hidden fields)
   const interactiveFields = fields.filter(
-    f => f.type !== 'Header' && f.type !== 'Section' && f.type !== 'Section Break' && f.type !== 'Page Break' && f.type !== 'Divider' && !(dynamicStates[f.id]?.hidden ?? f.hidden)
+    f => f.type !== 'Header' && f.type !== 'Section' && f.type !== 'Section Break' && f.type !== 'Page Break' && f.type !== 'Divider' && f.type !== 'Image' && !(dynamicStates[f.id]?.hidden ?? f.hidden)
   );
 
   const currentConversationalField = interactiveFields[currentStepIndex] || interactiveFields[0];
@@ -682,8 +682,75 @@ export default function PreviewMode({
           </div>
         );
 
-      case 'Photo':
       case 'Image': {
+        const imgSrc = val || field.value;
+        if (!imgSrc) return null;
+        const alignClass = field.imageLocation === 'center'
+          ? 'justify-center'
+          : field.imageLocation === 'right'
+          ? 'justify-end'
+          : 'justify-start';
+
+        const widthStyle = field.imageWidth
+          ? (field.imageWidth.endsWith('%') || field.imageWidth.endsWith('px') ? field.imageWidth : `${field.imageWidth}px`)
+          : '100%';
+
+        const heightStyle = field.imageHeight
+          ? (field.imageHeight.endsWith('%') || field.imageHeight.endsWith('px') ? field.imageHeight : `${field.imageHeight}px`)
+          : 'auto';
+
+        return (
+          <div className={`w-full flex ${alignClass}`}>
+            <img
+              src={imgSrc}
+              alt={field.label || 'Image'}
+              style={{
+                width: widthStyle,
+                height: heightStyle,
+                maxWidth: '100%',
+                objectFit: field.imageHeight ? 'cover' : 'contain'
+              }}
+              className="rounded-lg w-full h-auto shadow-2xs"
+            />
+          </div>
+        );
+      }
+
+      case 'Photo': {
+        if (field.label?.trim().toLowerCase().includes('image')) {
+          const imgSrc = val || field.value;
+          if (!imgSrc) return null;
+          const alignClass = field.imageLocation === 'center'
+            ? 'justify-center'
+            : field.imageLocation === 'right'
+            ? 'justify-end'
+            : 'justify-start';
+
+          const widthStyle = field.imageWidth
+            ? (field.imageWidth.endsWith('%') || field.imageWidth.endsWith('px') ? field.imageWidth : `${field.imageWidth}px`)
+            : '100%';
+
+          const heightStyle = field.imageHeight
+            ? (field.imageHeight.endsWith('%') || field.imageHeight.endsWith('px') ? field.imageHeight : `${field.imageHeight}px`)
+            : 'auto';
+
+          return (
+            <div className={`w-full flex ${alignClass}`}>
+              <img
+                src={imgSrc}
+                alt={field.label || 'Image'}
+                style={{
+                  width: widthStyle,
+                  height: heightStyle,
+                  maxWidth: '100%',
+                  objectFit: field.imageHeight ? 'cover' : 'contain'
+                }}
+                className="rounded-lg w-full h-auto shadow-2xs"
+              />
+            </div>
+          );
+        }
+
         const isPhotoUploaded = Boolean(val && typeof val === 'string' && val.trim().length > 0);
         const fitMode = field.fitMode || 'stretch';
 
@@ -706,42 +773,31 @@ export default function PreviewMode({
               }}
             />
             {isPhotoUploaded ? (
-              <div className="border border-slate-200 rounded-xl p-3 bg-white shadow-2xs">
-                <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span className="text-xs font-semibold text-slate-800">Photo Uploaded</span>
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      {fitMode === 'aspect' ? 'Aspect Ratio Fit' : 'Stretch to Fill'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label
-                      htmlFor={`photo-input-${field.id}`}
-                      className="text-xs text-blue-600 hover:underline font-semibold cursor-pointer"
-                    >
-                      Change
-                    </label>
-                    <span className="text-slate-300">•</span>
-                    <button
-                      type="button"
-                      onClick={() => handleInputChange(field.id, '')}
-                      className="text-xs text-red-500 hover:underline font-medium cursor-pointer"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-                <div className="w-full flex items-center justify-center bg-slate-50 rounded-lg p-2 overflow-hidden max-h-60">
-                  <img
-                    src={val}
-                    alt={field.label || 'Uploaded Photo'}
-                    style={{
-                      objectFit: fitMode === 'aspect' ? 'contain' : 'cover',
-                      maxHeight: '15rem'
-                    }}
-                    className="rounded shadow-xs max-w-full"
-                  />
+              <div className="relative group w-full flex flex-col items-center">
+                <img
+                  src={val}
+                  alt={field.label || 'Uploaded Photo'}
+                  style={{
+                    objectFit: fitMode === 'aspect' ? 'contain' : 'cover',
+                    maxHeight: '480px'
+                  }}
+                  className="rounded-lg shadow-2xs max-w-full w-full"
+                />
+                <div className="flex items-center gap-3 mt-2 text-xs">
+                  <label
+                    htmlFor={`photo-input-${field.id}`}
+                    className="text-blue-600 hover:underline font-medium cursor-pointer"
+                  >
+                    Change photo
+                  </label>
+                  <span className="text-slate-300">•</span>
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange(field.id, '')}
+                    className="text-red-500 hover:underline font-medium cursor-pointer"
+                  >
+                    Remove photo
+                  </button>
                 </div>
               </div>
             ) : (
@@ -1007,8 +1063,7 @@ export default function PreviewMode({
           </div>
         );
 
-      case 'Photo':
-      case 'Image': {
+      case 'Photo': {
         const isPhotoUploaded = Boolean(val && typeof val === 'string' && val.trim().length > 0);
         const fitMode = field.fitMode || 'stretch';
 
@@ -1429,6 +1484,59 @@ export default function PreviewMode({
                         return (
                           <div key={field.id} className="sm:col-span-2 py-2">
                             <hr className="border-slate-200" />
+                          </div>
+                        );
+                      }
+
+                      const isImageField = field.type === 'Image' || (field.type === 'Photo' && field.label?.trim().toLowerCase().includes('image'));
+
+                      if (isImageField) {
+                        if (dynamicStates[field.id]?.hidden ?? field.hidden) return null;
+                        const imgSrc = formData[field.id] || field.value;
+                        const alignClass = field.imageLocation === 'center'
+                          ? 'justify-center'
+                          : field.imageLocation === 'right'
+                          ? 'justify-end'
+                          : 'justify-start';
+
+                        const widthStyle = field.imageWidth
+                          ? (field.imageWidth.endsWith('%') || field.imageWidth.endsWith('px') ? field.imageWidth : `${field.imageWidth}px`)
+                          : '100%';
+
+                        const heightStyle = field.imageHeight
+                          ? (field.imageHeight.endsWith('%') || field.imageHeight.endsWith('px') ? field.imageHeight : `${field.imageHeight}px`)
+                          : 'auto';
+
+                        return (
+                          <div key={field.id} className="sm:col-span-2 mb-4">
+                            {field.label && (
+                              <label className="block text-xs sm:text-[13px] font-semibold text-slate-800 mb-2">
+                                {field.label}
+                                {field.required && (
+                                  <span className="text-red-500 font-bold ml-0.5">*</span>
+                                )}
+                              </label>
+                            )}
+                            {field.helperText && (
+                              <p className="text-[11px] text-slate-400 -mt-1 mb-2">
+                                {field.helperText}
+                              </p>
+                            )}
+                            {imgSrc ? (
+                              <div className={`w-full flex ${alignClass}`}>
+                                <img
+                                  src={imgSrc}
+                                  alt={field.label || 'Image'}
+                                  style={{
+                                    width: widthStyle,
+                                    height: heightStyle,
+                                    maxWidth: '100%',
+                                    objectFit: field.imageHeight ? 'cover' : 'contain'
+                                  }}
+                                  className="rounded-lg w-full h-auto shadow-2xs"
+                                />
+                              </div>
+                            ) : null}
                           </div>
                         );
                       }

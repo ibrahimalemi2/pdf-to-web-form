@@ -6,6 +6,7 @@ import {
   PenTool,
   Upload,
   Image as ImageIcon,
+  Camera,
   Type,
   SeparatorHorizontal,
   MoreHorizontal
@@ -92,6 +93,12 @@ const TOOLS = [
     id: 'photo',
     label: 'Photo',
     type: 'Photo',
+    icon: Camera
+  },
+  {
+    id: 'image',
+    label: 'Image',
+    type: 'Image',
     icon: ImageIcon
   },
   {

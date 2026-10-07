@@ -12,13 +12,23 @@ export default function ConnectorLines({
   const elementsRef = useRef(new Map());
   const animFrameId = useRef(null);
 
+  // Helper: check if a field is non-mappable (no connector line to PDF)
+  const isNonMappable = (f) =>
+    !f ||
+    f.type === 'Section' ||
+    f.type === 'Section Break' ||
+    f.type === 'Divider' ||
+    f.type === 'Page Break' ||
+    f.type === 'Image' ||
+    (f.type === 'Photo' && f.label?.trim().toLowerCase() === 'image');
+
   // Determine active fields (at most 2: selected and hovered)
   const activeFields = useMemo(() => {
     if (!visible) return [];
     const list = [];
     if (selectedFieldId) {
       const field = fields.find((f) => f.id === selectedFieldId);
-      if (field && field.type !== 'Section' && field.type !== 'Section Break' && field.type !== 'Divider' && field.type !== 'Page Break') {
+      if (field && !isNonMappable(field)) {
         list.push({
           id: selectedFieldId,
           isSelected: true,
@@ -29,7 +39,7 @@ export default function ConnectorLines({
     }
     if (hoveredFieldId && hoveredFieldId !== selectedFieldId) {
       const field = fields.find((f) => f.id === hoveredFieldId);
-      if (field && field.type !== 'Section' && field.type !== 'Section Break' && field.type !== 'Divider' && field.type !== 'Page Break') {
+      if (field && !isNonMappable(field)) {
         list.push({
           id: hoveredFieldId,
           isSelected: false,

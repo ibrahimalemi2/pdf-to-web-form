@@ -30,7 +30,8 @@ import {
   RotateCcw,
   Pen,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  ArrowUp
 } from 'lucide-react';
 
 import { PageBreakIcon, SectionBreakIcon } from './SidebarTools';
@@ -59,6 +60,7 @@ const FIELD_TYPE_OPTIONS = [
   { value: 'Checkbox', label: 'Checkbox' },
   { value: 'Signature', label: 'Signature' },
   { value: 'Photo', label: 'Photo' },
+  { value: 'Image', label: 'Image' },
   { value: 'File Upload', label: 'File Upload' }
 ];
 
@@ -2588,8 +2590,10 @@ export default function FieldPropertiesPanel({
     </div>
   );
 
-  const isPhoto = field.type === 'Photo' || field.type === 'Image';
+  const isPhoto = field.type === 'Photo';
+  const isImage = field.type === 'Image';
   const effectivePhotoNum = field.fieldNumber || (typeof field.id === 'string' && field.id.replace(/[^0-9]/g, '').slice(-2)) || (fieldIndex ? (60 + fieldIndex) : 64);
+  const effectiveImageNum = field.fieldNumber || (typeof field.id === 'string' && field.id.replace(/[^0-9]/g, '').slice(-2)) || (fieldIndex ? (60 + fieldIndex) : 68);
 
   const photoContent = (
     <div className="flex flex-col h-full min-h-0 bg-white text-slate-700">
@@ -2934,6 +2938,399 @@ export default function FieldPropertiesPanel({
     </div>
   );
 
+  const imageContent = (
+    <div className="flex flex-col h-full min-h-0 bg-white text-slate-700">
+      {/* Header matching PlatoForms Screenshot: Image #68 | Logics 📌 ✕ */}
+      <div className="h-12 px-6 border-b border-dotted border-slate-300 flex items-center justify-between shrink-0 bg-white">
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm font-semibold text-slate-800 tracking-tight">
+            Image
+          </span>
+          <span className="text-xs font-normal text-slate-400">
+            #{effectiveImageNum}
+          </span>
+        </div>
+
+        {/* Right Header Actions: Logics, Pin, Close */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => onNavigateToLogics?.(field.id)}
+            title="Configure Field Logic Rules"
+            className="flex items-center gap-1 text-xs text-slate-700 hover:text-blue-600 transition cursor-pointer"
+          >
+            <svg viewBox="0 0 16 16" className="w-3.5 h-3.5 text-slate-700" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <circle cx="3" cy="8" r="1.8" />
+              <circle cx="13" cy="4" r="1.8" />
+              <circle cx="13" cy="12" r="1.8" />
+              <path d="M4.8 8h3.2a2 2 0 0 0 2-2V4" />
+              <path d="M8 8a2 2 0 0 1 2 2v2" />
+            </svg>
+            <span className="font-normal">Logics</span>
+          </button>
+
+          {onTogglePin ? (
+            <button
+              type="button"
+              onClick={onTogglePin}
+              title={isPinned ? "Unpin to floating window" : "Pin to sidebar"}
+              className="text-slate-600 hover:text-slate-900 transition cursor-pointer p-0.5"
+            >
+              {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="text-slate-600 hover:text-slate-900 transition cursor-pointer p-0.5"
+              title="Pin settings"
+            >
+              <Pin className="w-4 h-4" />
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={onClose}
+            title="Close Settings"
+            className="text-slate-600 hover:text-slate-900 transition cursor-pointer p-0.5"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="p-6 space-y-4 text-xs text-slate-700 overflow-y-auto max-h-[calc(96vh-48px)]">
+        
+        {/* Form Attributes matching Screenshot */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-normal text-slate-400">
+              Form Attributes
+            </span>
+
+            {/* Alignment buttons (Left active with #1877f2) */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => onUpdateField(field.id, { align: 'left' })}
+                title="Align Left"
+                className={`w-6 h-6 flex items-center justify-center rounded-[3px] transition cursor-pointer ${
+                  (field.align || 'left') === 'left'
+                    ? 'bg-[#1877f2] text-white shadow-2xs'
+                    : 'bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-700'
+                }`}
+              >
+                <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="currentColor">
+                  <rect x="2" y="3" width="12" height="2" rx="0.5" />
+                  <rect x="2" y="7" width="8" height="2" rx="0.5" />
+                  <rect x="2" y="11" width="5" height="2" rx="0.5" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateField(field.id, { align: 'center' })}
+                title="Align Center"
+                className={`w-6 h-6 flex items-center justify-center rounded-[3px] transition cursor-pointer ${
+                  field.align === 'center'
+                    ? 'bg-[#1877f2] text-white shadow-2xs'
+                    : 'bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-700'
+                }`}
+              >
+                <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="currentColor">
+                  <rect x="2" y="3" width="12" height="2" rx="0.5" />
+                  <rect x="4" y="7" width="8" height="2" rx="0.5" />
+                  <rect x="5.5" y="11" width="5" height="2" rx="0.5" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateField(field.id, { align: 'right' })}
+                title="Align Right"
+                className={`w-6 h-6 flex items-center justify-center rounded-[3px] transition cursor-pointer ${
+                  field.align === 'right'
+                    ? 'bg-[#1877f2] text-white shadow-2xs'
+                    : 'bg-white border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-700'
+                }`}
+              >
+                <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="currentColor">
+                  <rect x="2" y="3" width="12" height="2" rx="0.5" />
+                  <rect x="6" y="7" width="8" height="2" rx="0.5" />
+                  <rect x="9" y="11" width="5" height="2" rx="0.5" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* 2 Columns: Row 1 (Label & Help Text), Row 2 (Image Size & Image Location) */}
+          <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+            {/* Label */}
+            <div className="flex items-center gap-2">
+              <label className="w-18 text-xs text-slate-700 font-normal shrink-0">
+                Label
+              </label>
+              <div className="flex-1 relative flex items-center">
+                <input
+                  type="text"
+                  value={field.label ?? 'Image'}
+                  onChange={(e) => onUpdateField(field.id, { label: e.target.value })}
+                  className="w-full px-2.5 py-1.5 pr-8 text-xs rounded-[4px] border border-[#1877f2] ring-1 ring-[#1877f2] bg-white text-slate-800 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  title="Field label settings"
+                  className="absolute right-1 top-1 bottom-1 px-1.5 border border-slate-200 rounded-[3px] text-slate-400 hover:text-slate-600 bg-white flex items-center justify-center transition cursor-pointer"
+                >
+                  <svg viewBox="0 0 16 16" className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" strokeWidth="1.6">
+                    <path d="M2.5 5h9M9 2.5l2.5 2.5L9 7.5M2.5 3.5v3" />
+                    <path d="M13.5 11h-9M7 8.5L4.5 11 7 13.5M13.5 9.5v3" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Help Text */}
+            <div className="flex items-center gap-2">
+              <label className="w-22 text-xs text-slate-700 font-normal shrink-0">
+                Help Text
+              </label>
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={field.helperText || ''}
+                  onChange={(e) => onUpdateField(field.id, { helperText: e.target.value })}
+                  placeholder="Help Text"
+                  className="w-full px-2.5 py-1.5 text-xs rounded-[4px] border border-slate-200 bg-white text-slate-800 placeholder-slate-300 focus:outline-none focus:border-[#1877f2] transition"
+                />
+              </div>
+            </div>
+
+            {/* Image Size */}
+            <div className="flex items-center gap-2">
+              <label className="w-18 text-xs text-slate-700 font-normal shrink-0">
+                Image Size
+              </label>
+              <div className="flex-1 flex items-center gap-2">
+                <input
+                  type="text"
+                  value={field.imageWidth ?? ''}
+                  onChange={(e) => onUpdateField(field.id, { imageWidth: e.target.value })}
+                  placeholder=""
+                  className="w-full px-2.5 py-1.5 text-xs rounded-[4px] border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-[#1877f2] transition"
+                />
+                <Link2 className="w-4 h-4 text-slate-400 shrink-0" />
+                <input
+                  type="text"
+                  value={field.imageHeight ?? ''}
+                  onChange={(e) => onUpdateField(field.id, { imageHeight: e.target.value })}
+                  placeholder=""
+                  className="w-full px-2.5 py-1.5 text-xs rounded-[4px] border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-[#1877f2] transition"
+                />
+              </div>
+            </div>
+
+            {/* Image Location */}
+            <div className="flex items-center gap-2">
+              <label className="w-22 text-xs text-slate-700 font-normal shrink-0">
+                Image Location
+              </label>
+              <div className="flex-1 flex items-center gap-4">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name={`imageLocation_${field.id}`}
+                    checked={(field.imageLocation || 'left') === 'left'}
+                    onChange={() => onUpdateField(field.id, { imageLocation: 'left' })}
+                    className="w-3.5 h-3.5 text-[#1877f2] focus:ring-0 cursor-pointer accent-[#1877f2]"
+                  />
+                  <span className="text-xs font-normal text-slate-700">Left</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name={`imageLocation_${field.id}`}
+                    checked={field.imageLocation === 'center'}
+                    onChange={() => onUpdateField(field.id, { imageLocation: 'center' })}
+                    className="w-3.5 h-3.5 text-[#1877f2] focus:ring-0 cursor-pointer accent-[#1877f2]"
+                  />
+                  <span className="text-xs font-normal text-slate-700">Center</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name={`imageLocation_${field.id}`}
+                    checked={field.imageLocation === 'right'}
+                    onChange={() => onUpdateField(field.id, { imageLocation: 'right' })}
+                    className="w-3.5 h-3.5 text-[#1877f2] focus:ring-0 cursor-pointer accent-[#1877f2]"
+                  />
+                  <span className="text-xs font-normal text-slate-700">Right</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Upload Image Dashed Area matching Screenshot */}
+        <div className="pt-1">
+          <input
+            type="file"
+            id={`image-upload-input-${field.id}`}
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (loadEvent) => {
+                  onUpdateField(field.id, { value: loadEvent.target.result });
+                };
+                reader.readAsDataURL(file);
+              }
+            }}
+          />
+
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const file = e.dataTransfer?.files?.[0];
+              if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (loadEvent) => {
+                  onUpdateField(field.id, { value: loadEvent.target.result });
+                };
+                reader.readAsDataURL(file);
+              }
+            }}
+            className="w-full"
+          >
+            {field.value && typeof field.value === 'string' && (field.value.startsWith('data:image/') || field.value.startsWith('http') || field.value.startsWith('blob:')) ? (
+              <div className="border-2 border-dashed border-slate-300 rounded-[4px] py-6 px-6 flex flex-col items-center justify-center gap-3 bg-white">
+                <img
+                  src={field.value}
+                  alt={field.label || 'Uploaded Image'}
+                  style={{
+                    width: field.imageWidth ? `${field.imageWidth}${field.imageWidth.endsWith('%') || field.imageWidth.endsWith('px') ? '' : 'px'}` : undefined,
+                    height: field.imageHeight ? `${field.imageHeight}${field.imageHeight.endsWith('%') || field.imageHeight.endsWith('px') ? '' : 'px'}` : undefined,
+                    maxWidth: '100%',
+                    maxHeight: '180px',
+                    objectFit: 'contain'
+                  }}
+                  className="rounded border border-slate-200"
+                />
+                <div className="flex items-center gap-4 text-xs">
+                  <label
+                    htmlFor={`image-upload-input-${field.id}`}
+                    className="text-blue-600 hover:underline font-medium cursor-pointer"
+                  >
+                    Change Image
+                  </label>
+                  <span className="text-slate-300">•</span>
+                  <button
+                    type="button"
+                    onClick={() => onUpdateField(field.id, { value: '' })}
+                    className="text-red-500 hover:text-red-700 hover:underline cursor-pointer"
+                  >
+                    Remove Image
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label
+                htmlFor={`image-upload-input-${field.id}`}
+                className="w-full border-2 border-dashed border-slate-300 rounded-[4px] py-10 px-6 flex items-center justify-center gap-2.5 cursor-pointer bg-white hover:bg-slate-50/60 transition group"
+              >
+                <ArrowUp className="w-5 h-5 text-slate-800 stroke-[3] group-hover:text-blue-600 transition" />
+                <span className="text-sm font-semibold text-slate-800 group-hover:text-blue-600 transition">
+                  Upload Image
+                </span>
+              </label>
+            )}
+          </div>
+        </div>
+
+        {/* 2 Checkboxes matching PlatoForms Screenshot: Hidden on Form, Print in PDF */}
+        <div className="flex items-center gap-12 pt-1 select-none">
+          <label className="flex items-center gap-2 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={field.hidden ?? false}
+              onChange={(e) => onUpdateField(field.id, { hidden: e.target.checked })}
+              className="w-4 h-4 rounded-[3px] border-slate-300 text-[#1877f2] focus:ring-0 cursor-pointer accent-[#1877f2]"
+            />
+            <span className="text-xs font-normal text-slate-700">
+              Hidden on Form
+            </span>
+          </label>
+
+          <label className="flex items-center gap-2 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={field.printInPdf ?? true}
+              onChange={(e) => onUpdateField(field.id, { printInPdf: e.target.checked })}
+              className="w-4 h-4 rounded-[3px] border-slate-300 text-[#1877f2] focus:ring-0 cursor-pointer accent-[#1877f2]"
+            />
+            <span className="text-xs font-normal text-slate-700">
+              Print in PDF
+            </span>
+          </label>
+        </div>
+
+        {/* Dotted divider */}
+        <div className="border-b border-dotted border-slate-300" />
+
+        {/* Preview Section matching Screenshot */}
+        <div className="space-y-2 pt-0.5">
+          <div className="flex items-center gap-2 text-slate-400">
+            <svg viewBox="0 0 16 16" className="w-4 h-4 text-slate-600" fill="currentColor">
+              <path fillRule="evenodd" d="M1.5 3A1.5 1.5 0 0 1 3 1.5h10A1.5 1.5 0 0 1 14.5 3v10a1.5 1.5 0 0 1-1.5 1.5H3A1.5 1.5 0 0 1 1.5 13V3zm1.2 0a.3.3 0 0 1 .3-.3h10a.3.3 0 0 1 .3.3v10a.3.3 0 0 1-.3.3H3a.3.3 0 0 1-.3-.3V3z" />
+              <path d="M8 5.5c-2.3 0-4.2 1.5-5 2.5.8 1 2.7 2.5 5 2.5s4.2-1.5 5-2.5c-.8-1-2.7-2.5-5-2.5zm0 4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z" />
+            </svg>
+            <span className="text-xs font-normal text-slate-400">
+              Preview
+            </span>
+          </div>
+
+          <div className="border border-dashed border-slate-300 rounded-[4px] p-6 bg-white transition-all min-h-[140px] flex items-center">
+            <div
+              className={`w-full flex ${
+                field.imageLocation === 'center'
+                  ? 'justify-center'
+                  : field.imageLocation === 'right'
+                  ? 'justify-end'
+                  : 'justify-start'
+              }`}
+            >
+              {field.value && typeof field.value === 'string' && (field.value.startsWith('data:image/') || field.value.startsWith('http') || field.value.startsWith('blob:')) ? (
+                <img
+                  src={field.value}
+                  alt={field.label || 'Image preview'}
+                  style={{
+                    width: field.imageWidth ? `${field.imageWidth}${field.imageWidth.endsWith('%') || field.imageWidth.endsWith('px') ? '' : 'px'}` : undefined,
+                    height: field.imageHeight ? `${field.imageHeight}${field.imageHeight.endsWith('%') || field.imageHeight.endsWith('px') ? '' : 'px'}` : undefined,
+                    maxWidth: '100%',
+                    maxHeight: field.imageHeight ? undefined : '160px',
+                    objectFit: 'contain'
+                  }}
+                  className="rounded border border-slate-200 bg-white"
+                />
+              ) : (
+                <span className="text-xs text-slate-700 font-normal">
+                  {field.label || 'Image'}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+
   const activeContent = isPageButtons
     ? pageButtonsContent
     : isPageBreak
@@ -2944,6 +3341,8 @@ export default function FieldPropertiesPanel({
     ? signatureContent
     : isPhoto
     ? photoContent
+    : isImage
+    ? imageContent
     : panelContent;
 
   // If PINNED: Render docked right-hand inspector panel
@@ -2963,7 +3362,7 @@ export default function FieldPropertiesPanel({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className={`bg-white rounded-xl shadow-2xl border border-slate-200/90 w-full ${isPhoto ? 'max-w-[650px] max-h-[96vh]' : 'max-w-2xl h-[86vh] max-h-[88vh]'} flex flex-col overflow-hidden animate-in zoom-in-95 duration-150`}>
+      <div className={`bg-white rounded-xl shadow-2xl border border-slate-200/90 w-full ${(isPhoto || isImage) ? 'max-w-[650px] max-h-[96vh]' : 'max-w-2xl h-[86vh] max-h-[88vh]'} flex flex-col overflow-hidden animate-in zoom-in-95 duration-150`}>
         {activeContent}
       </div>
     </div>

@@ -103,8 +103,16 @@ function PdfPageCard({
     ? previewImageUrl
     : (documentId ? getPageImageUrl(documentId, pageNum) : null);
 
-  // Filter fields mapped to this specific page (excluding structural page dividers & page breaks)
-  const pageFields = fields.filter(f => (f.pdfMapping?.page || f.page || 1) === pageNum && f.type !== 'Section' && f.type !== 'Section Break' && f.type !== 'Divider' && f.type !== 'Page Break');
+  // Filter fields mapped to this specific page (excluding structural dividers, breaks, and decorative image elements)
+  const isImageField = (f) => f && (f.type === 'Image' || (f.type === 'Photo' && f.label?.trim().toLowerCase() === 'image'));
+  const pageFields = fields.filter(f =>
+    (f.pdfMapping?.page || f.page || 1) === pageNum &&
+    f.type !== 'Section' &&
+    f.type !== 'Section Break' &&
+    f.type !== 'Divider' &&
+    f.type !== 'Page Break' &&
+    !isImageField(f)
+  );
 
   return (
     <div 
@@ -585,6 +593,10 @@ export default function PdfViewer({
   // Auto-scroll to selected field if selected on canvas
   useEffect(() => {
     if (!selectedFieldId) return;
+    const selField = fields.find(f => f.id === selectedFieldId);
+    if (selField && (selField.type === 'Image' || (selField.type === 'Photo' && selField.label?.trim().toLowerCase() === 'image'))) {
+      return;
+    }
     const scrollTarget = () => {
       const targetEl = document.querySelector(`[data-pdf-field-id="${selectedFieldId}"]`);
       if (targetEl) {
@@ -595,7 +607,7 @@ export default function PdfViewer({
     scrollTarget();
     const t = setTimeout(scrollTarget, 100);
     return () => clearTimeout(t);
-  }, [selectedFieldId]);
+  }, [selectedFieldId, fields]);
 
   // Coordinate mapping helper
   const getFieldCoordinates = useCallback((field) => {

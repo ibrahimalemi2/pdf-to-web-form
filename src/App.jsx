@@ -452,7 +452,7 @@ export default function App() {
       'Checkbox': 'Checkboxes',
       'Signature': 'Signature',
       'Photo': 'Photo',
-      'Image': 'Photo',
+      'Image': 'Image',
       'File Upload': 'Document Attachment',
       'Section Break': 'Section Break',
       'Section': 'Section Break',
@@ -464,7 +464,8 @@ export default function App() {
     const isDate = toolType === 'Date';
     const isCb = toolType === 'Checkbox';
     const isSig = toolType === 'Signature';
-    const isPhoto = toolType === 'Photo' || toolType === 'Image';
+    const isPhoto = toolType === 'Photo';
+    const isImage = toolType === 'Image';
     const cbOpts = isCb ? ['Option 1', 'Option 2'] : undefined;
     const initialY = Math.min(25 + fields.length * 8, 80);
     const cbCoords = isCb ? getSyncedCheckboxCoordinates({
@@ -474,9 +475,9 @@ export default function App() {
 
     const newField = {
       id: newId,
-      type: isPhoto ? 'Photo' : toolType,
+      type: toolType,
       label: defaultLabels[toolType] || `${toolType} Field`,
-      placeholder: isPhoto ? 'Choose a photo or drag it here.' : (isSectionBreak ? 'Title' : (isPageBreak ? `Step ${newStepNum} Title` : (isDivider ? 'Divider Line' : isDate ? 'YYYY - MM - DD' : (toolType === 'Header' ? 'Section Title' : `Enter ${toolType.toLowerCase()}...`)))),
+      placeholder: isPhoto ? 'Choose a photo or drag it here.' : (isImage ? 'Upload Image' : (isSectionBreak ? 'Title' : (isPageBreak ? `Step ${newStepNum} Title` : (isDivider ? 'Divider Line' : isDate ? 'YYYY - MM - DD' : (toolType === 'Header' ? 'Section Title' : `Enter ${toolType.toLowerCase()}...`))))),
       uploadingText: 'Uploading...',
       fitMode: 'stretch', // 'stretch' (Stretch to Fill) | 'aspect' (Aspect Ratio Fit)
       format: isDate ? 'YYYY-MM-DD' : '',
@@ -498,11 +499,14 @@ export default function App() {
       pdfOverflowSmaller: true,
       pdfOverflowWrap: true,
       pdfTextSpacing: 'Natural',
-      helperText: isSectionBreak ? 'Help text' : (isPageBreak ? 'Page break: divides the form into steps with a Next button' : (isDivider ? 'Divider line separating questions' : isPhoto ? '' : `Configured ${toolType.toLowerCase()} input`)),
+      helperText: isSectionBreak ? 'Help text' : (isPageBreak ? 'Page break: divides the form into steps with a Next button' : (isDivider ? 'Divider line separating questions' : (isPhoto || isImage) ? '' : `Configured ${toolType.toLowerCase()} input`)),
       value: '',
       required: isSig || isPhoto ? true : false,
       readOnly: false,
       hidden: false,
+      imageLocation: 'left',
+      imageWidth: '',
+      imageHeight: '',
       signMethodDraw: true,
       signMethodType: true,
       signMethodUpload: true,
@@ -520,7 +524,7 @@ export default function App() {
       prevButtonText: 'Back',
       buttonAlign: 'center',
       buttonHelp: '',
-      columnSpan: toolType === 'Long Text' || toolType === 'File Upload' || isPhoto || isDivider || isPageBreak || isSectionBreak || toolType === 'Header' ? 2 : 1,
+      columnSpan: toolType === 'Long Text' || toolType === 'File Upload' || isPhoto || isImage || isDivider || isPageBreak || isSectionBreak || toolType === 'Header' ? 2 : 1,
       options: toolType === 'Dropdown' ? ['Option A', 'Option B', 'Option C'] : cbOpts,
       optionsCoordinates: cbCoords,
       multipleChoices: false,
@@ -530,12 +534,12 @@ export default function App() {
       page: currentPdfPage || 1,
       pdfMapping: {
         page: currentPdfPage || 1,
-        badgeW: isCb ? '36.0' : (isSig ? '220.0' : (isPhoto ? '180.0' : '240.0')),
-        badgeH: isSig ? '40.0' : (isPhoto ? '60.0' : '26.6'),
+        badgeW: isCb ? '36.0' : (isSig ? '220.0' : ((isPhoto || isImage) ? '180.0' : '240.0')),
+        badgeH: isSig ? '40.0' : ((isPhoto || isImage) ? '60.0' : '26.6'),
         x: '24%',
         y: `${initialY}%`,
-        w: isCb ? '12%' : (isSig ? '35%' : (isPhoto ? '30%' : '50%')),
-        h: isCb ? '4%' : (isSig ? '8%' : (isPhoto ? '14%' : '5%')),
+        w: isCb ? '12%' : (isSig ? '35%' : ((isPhoto || isImage) ? '30%' : '50%')),
+        h: isCb ? '4%' : (isSig ? '8%' : ((isPhoto || isImage) ? '14%' : '5%')),
         optionsCoordinates: cbCoords
       }
     };
