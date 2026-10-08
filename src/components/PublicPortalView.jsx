@@ -14,7 +14,7 @@ import {
   Clock,
   Building2
 } from 'lucide-react';
-import { fetchPublicPortal } from '../services/api';
+import { fetchPublicPortal, getFormPreviewUrl } from '../services/api';
 import QrCodeModal from './QrCodeModal';
 
 /**
@@ -119,12 +119,64 @@ function getCategoryTheme(category) {
   }
 }
 
+/**
+ * Realistic Document Paper Preview Component for Public Portal Cards
+ */
+function DocumentPaperPreview({ form }) {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const previewUrl = form?.id ? getFormPreviewUrl(form.id) : null;
+  const displayName = form?.originalFilename || form?.title || 'Official Document';
+
+  return (
+    <div className="w-full max-w-[155px] aspect-[1/1.414] bg-white rounded-md shadow-md group-hover:shadow-lg transition-all duration-200 relative select-none overflow-hidden flex flex-col justify-between">
+      {!imageError && previewUrl && (
+        <img
+          src={previewUrl}
+          alt={displayName}
+          loading="lazy"
+          onLoad={() => setImageLoaded(true)}
+          onError={() => setImageError(true)}
+          className={`absolute inset-0 w-full h-full object-contain bg-white rounded-md transition-opacity duration-300 z-10 ${
+            imageLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
+        />
+      )}
+
+      {/* Realistic Document Paper Fallback */}
+      <div className="flex flex-col justify-between h-full w-full p-2.5 pointer-events-none bg-white">
+        <div className="border-b border-slate-300/80 pb-1 text-center">
+          <div className="text-[5px] text-slate-400 font-mono mb-0.5">OFFICIAL FORM</div>
+          <FileText className="w-3 h-3 mx-auto text-slate-400 mb-0.5" />
+          <div className="font-serif font-bold text-[6.5px] text-slate-800 tracking-wider uppercase truncate px-0.5">
+            {displayName.replace(/\.pdf$/i, '')}
+          </div>
+        </div>
+        <div className="py-1 space-y-1 flex-1 flex flex-col justify-center">
+          <div className="border border-slate-200 rounded-[2px] p-0.5 bg-slate-50/50">
+            <div className="text-[3px] text-slate-500 font-semibold uppercase">APPLICANT PARTICULARS</div>
+            <div className="h-1 border-b border-dotted border-slate-300 mt-0.5" />
+          </div>
+          <div className="border border-slate-200 rounded-[2px] p-0.5 bg-slate-50/50">
+            <div className="text-[3px] text-slate-500 font-semibold uppercase">ATTESTATION & SIGNATURE</div>
+            <div className="h-1 border-b border-dotted border-slate-300 mt-0.5" />
+          </div>
+        </div>
+        <div className="border-t border-slate-300/80 pt-0.5 flex items-center justify-between text-[4px] text-slate-400 font-mono">
+          <span>PAGE 1 OF {form?.pageCount || 1}</span>
+          <span>ORIGINAL</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PublicPortalView({ portalSlug, onSelectForm }) {
   const [agencyData, setAgencyData] = useState(null);
   const [forms, setForms] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
-  const [viewMode, setViewMode] = useState('list'); // 'list' (Directory) or 'grid' (Compact Tiles)
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' (Card by default) or 'list' (Directory)
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [selectedQrForm, setSelectedQrForm] = useState(null);
@@ -478,9 +530,9 @@ export default function PublicPortalView({ portalSlug, onSelectForm }) {
           </div>
         ) : (
           /* ============================================================ */
-          /* 3B. CRISP COMPACT TILES (ZERO WASTED VERTICAL VOID)          */
+          /* 3B. OFFICIAL DOCUMENT CARDS (GRID VIEW - DEFAULT)            */
           /* ============================================================ */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredForms.map((form) => {
               const title = cleanFormTitle(form);
               const category = getDocumentCategory(form);
@@ -492,55 +544,71 @@ export default function PublicPortalView({ portalSlug, onSelectForm }) {
               return (
                 <div
                   key={form.id}
-                  className="bg-white rounded-lg border border-slate-200 shadow-xs hover:border-blue-400 p-4 flex flex-col justify-between space-y-3.5 transition group"
+                  onClick={() => handleStartForm(form)}
+                  className="bg-white rounded-xl border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-200 flex flex-col overflow-hidden relative group cursor-pointer"
                 >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${theme.badge}`}>
+                  {/* Top Preview Canvas */}
+                  <div className="w-full bg-[#f4f6f9] pt-10 pb-4 px-4 flex items-center justify-center relative min-h-[220px]">
+                    {/* Category Badge (Top-Left, z-20) */}
+                    <div className="absolute top-3 left-3 z-20">
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${theme.badge} shadow-2xs select-none`}>
                         {category}
                       </span>
-                      <span className="text-xs text-slate-500 font-mono font-medium">
+                    </div>
+
+                    {/* Page Count (Top-Right, z-20) */}
+                    <div className="absolute top-3 right-3 z-20">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-medium bg-white/90 text-slate-600 border border-slate-200/80 shadow-2xs select-none">
                         {pageCount} {pageCount === 1 ? 'Page' : 'Pages'}
                       </span>
                     </div>
 
-                    <h2 className="text-sm font-bold text-slate-900 group-hover:text-blue-700 transition-colors line-clamp-2 leading-snug">
-                      {title}
-                    </h2>
-
-                    <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
-                      {form.description ||
-                        'Complete required answers directly on this terminal for immediate counter stamping.'}
-                    </p>
-
-                    <div className="pt-1 text-[11px] text-slate-500 font-medium flex items-center justify-between">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-slate-400" />
-                        <span>{estTime}</span>
-                      </span>
-                      <span className="text-blue-700 font-semibold">{requirements}</span>
-                    </div>
+                    {/* Centered Document Paper Preview */}
+                    <DocumentPaperPreview form={form} />
                   </div>
 
-                  {/* Actions Row */}
-                  <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedQrForm(form)}
-                      title="Scan to mobile"
-                      className="min-h-[44px] px-3 py-2 rounded-lg border border-blue-200 bg-white hover:bg-blue-50 text-blue-900 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                    >
-                      <QrCode className="w-3.5 h-3.5 text-blue-700" />
-                    </button>
+                  {/* Bottom Info Section */}
+                  <div className="p-4 flex flex-col justify-between flex-1 bg-white space-y-3">
+                    <div>
+                      <h2 className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-blue-700 transition-colors leading-snug line-clamp-2">
+                        {title}
+                      </h2>
 
-                    <button
-                      type="button"
-                      onClick={() => handleStartForm(form)}
-                      className="min-h-[44px] flex-1 px-3.5 py-2 bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white text-xs font-bold rounded-lg shadow-xs flex items-center justify-center gap-2 transition cursor-pointer"
-                    >
-                      <span>Start Form</span>
-                      <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
-                    </button>
+                      <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed mt-1">
+                        {form.description ||
+                          'Complete required answers directly on this terminal for immediate counter stamping.'}
+                      </p>
+
+                      <div className="pt-2 text-[11px] text-slate-500 font-medium flex items-center justify-between">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          <span>{estTime}</span>
+                        </span>
+                        <span className="text-blue-700 font-semibold">{requirements}</span>
+                      </div>
+                    </div>
+
+                    {/* Actions Row */}
+                    <div className="pt-2.5 border-t border-slate-100 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedQrForm(form)}
+                        title="Send this form to your mobile device"
+                        className="min-h-[42px] px-3 py-2 rounded-lg border border-blue-200 bg-white hover:bg-blue-50 text-blue-900 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                      >
+                        <QrCode className="w-3.5 h-3.5 text-blue-700" />
+                        <span className="hidden sm:inline">QR</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleStartForm(form)}
+                        className="min-h-[42px] flex-1 px-3.5 py-2 bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white text-xs font-bold rounded-lg shadow-xs flex items-center justify-center gap-2 transition cursor-pointer"
+                      >
+                        <span>Start Form</span>
+                        <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
