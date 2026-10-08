@@ -78,6 +78,31 @@ export default function FieldPropertiesPanel({
   const [newOptionText, setNewOptionText] = useState('');
   const [showCoordinates, setShowCoordinates] = useState(false);
 
+  // Signature preview state (declared at top level to respect Rules of Hooks)
+  const isSignature = field?.type === 'Signature';
+  const [sigPreviewTab, setSigPreviewTab] = useState('draw');
+  const [sigPreviewInk, setSigPreviewInk] = useState(field?.inkColor || '#000000');
+  const [sigPreviewTyped, setSigPreviewTyped] = useState('');
+  const [sigPreviewDrawn, setSigPreviewDrawn] = useState(false);
+  const previewCanvasRef = useRef(null);
+  const isPreviewDrawingRef = useRef(false);
+
+  useEffect(() => {
+    if (!isSignature || sigPreviewTab !== 'draw') return;
+    const canvas = previewCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    ctx.strokeStyle = sigPreviewInk;
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  }, [isSignature, sigPreviewTab, sigPreviewInk]);
+
   if (!field) return null;
 
   const Icon = ICON_MAP[field.type] || Type;
@@ -2133,31 +2158,7 @@ export default function FieldPropertiesPanel({
     </div>
   );
 
-  const isSignature = field.type === 'Signature';
   const effectiveSigNum = field.fieldNumber || (typeof field.id === 'string' && field.id.replace(/[^0-9]/g, '').slice(-2)) || (fieldIndex ? (60 + fieldIndex) : 63);
-
-  const [sigPreviewTab, setSigPreviewTab] = useState('draw');
-  const [sigPreviewInk, setSigPreviewInk] = useState(field.inkColor || '#000000');
-  const [sigPreviewTyped, setSigPreviewTyped] = useState('');
-  const [sigPreviewDrawn, setSigPreviewDrawn] = useState(false);
-  const previewCanvasRef = useRef(null);
-  const isPreviewDrawingRef = useRef(false);
-
-  useEffect(() => {
-    if (!isSignature || sigPreviewTab !== 'draw') return;
-    const canvas = previewCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
-    ctx.strokeStyle = sigPreviewInk;
-    ctx.lineWidth = 2.5;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-  }, [isSignature, sigPreviewTab, sigPreviewInk]);
 
   const getPreviewCanvasCoords = (e) => {
     const canvas = previewCanvasRef.current;

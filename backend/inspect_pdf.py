@@ -24,9 +24,10 @@ print("Total pages:", len(doc))
 for p in range(len(doc)):
     page = doc[p]
     print(f"\n=== PAGE {p+1} WINGDINGS & CHECKBOXES ===")
-    blocks = page.get_text("dict")["blocks"]
+    text_dict = page.get_text("dict")
+    blocks = text_dict.get("blocks", []) if isinstance(text_dict, dict) else []
     for b in blocks:
-        if b.get("type") != 0: continue
+        if not isinstance(b, dict) or b.get("type") != 0: continue
         for l in b.get("lines", []):
             has_box = False
             for s in l.get("spans", []):

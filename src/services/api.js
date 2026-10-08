@@ -142,6 +142,10 @@ export function getPageImageUrl(docId, pageNumber = 1, dpi = 150) {
   return `${API_BASE_URL}/document/${docId}/page/${pageNumber}.png?dpi=${dpi}`;
 }
 
+export function getFormPreviewUrl(formId) {
+  return `${API_BASE_URL}/api/forms/${formId}/preview.png`;
+}
+
 /**
  * Helper to construct the raw PDF download/render URL.
  */
@@ -215,6 +219,281 @@ export async function downloadFilledPdf({ documentId, filename, formData, fields
   return cleanName;
 }
 
+// -------------------------------------------------------------
+// Authentication & Creator Sessions
+// -------------------------------------------------------------
+
+const TOKEN_KEY = 'consulardoc_auth_token';
+const USER_KEY = 'consulardoc_auth_user';
+
+export function getAuthToken() {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAuthToken(token) {
+  try {
+    if (token) {
+      localStorage.setItem(TOKEN_KEY, token);
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+    }
+  } catch (e) {
+    console.error('Failed to store auth token', e);
+  }
+}
+
+export function getStoredUser() {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredUser(user) {
+  try {
+    if (user) {
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+    } else {
+      localStorage.removeItem(USER_KEY);
+    }
+  } catch (e) {
+    console.error('Failed to store user profile', e);
+  }
+}
+
+export function clearAuthSession() {
+  setAuthToken(null);
+  setStoredUser(null);
+}
+
+function authHeaders(headers = {}) {
+  const token = getAuthToken();
+  if (token) {
+    return { ...headers, Authorization: `Bearer ${token}` };
+  }
+  return headers;
+}
+
+export async function registerUser(payload) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || 'Registration failed');
+  }
+
+  if (data.token) setAuthToken(data.token);
+  if (data.user) setStoredUser(data.user);
+  return data;
+}
+
+export async function loginUser(payload) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || 'Login failed');
+  }
+
+  if (data.token) setAuthToken(data.token);
+  if (data.user) setStoredUser(data.user);
+  return data;
+}
+
+export async function fetchCurrentUser() {
+  const token = getAuthToken();
+  if (!token) return null;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+      method: 'GET',
+      headers: authHeaders(),
+    });
+
+    if (response.status === 401) {
+      clearAuthSession();
+      return null;
+    }
+
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (data.user) setStoredUser(data.user);
+    return data.user;
+  } catch {
+    return getStoredUser();
+  }
+}
+
+export async function updateUserProfile(payload) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/profile`, {
+    method: 'PUT',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to update profile');
+  }
+  if (data.user) setStoredUser(data.user);
+  return data.user;
+}
+
+// -------------------------------------------------------------
+// Creator Forms Management (Drafts & Published)
+// -------------------------------------------------------------
+
+export async function fetchUserForms(status = null) {
+  const query = status ? `?status=${encodeURIComponent(status)}` : '';
+  const response = await fetch(`${API_BASE_URL}/api/forms${query}`, {
+    method: 'GET',
+    headers: authHeaders(),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to load forms');
+  }
+  return data.forms || [];
+}
+
+export async function fetchUserForm(formId) {
+  const response = await fetch(`${API_BASE_URL}/api/forms/${formId}`, {
+    method: 'GET',
+    headers: authHeaders(),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to load form');
+  }
+  return data.form;
+}
+
+export async function saveUserForm(payload) {
+  const response = await fetch(`${API_BASE_URL}/api/forms`, {
+    method: 'POST',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to save form');
+  }
+  return data.form;
+}
+
+export async function updateFormStatus(formId, status) {
+  const response = await fetch(`${API_BASE_URL}/api/forms/${formId}/status`, {
+    method: 'PATCH',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ status }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to update form status');
+  }
+  return data;
+}
+
+export async function deleteUserForm(formId) {
+  const response = await fetch(`${API_BASE_URL}/api/forms/${formId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to delete form');
+  }
+  return data;
+}
+
+// -------------------------------------------------------------
+// Public Portal & Zero-Retention Client Filling
+// -------------------------------------------------------------
+
+export async function fetchPublicPortal(portalSlug) {
+  const response = await fetch(`${API_BASE_URL}/api/public/portal/${encodeURIComponent(portalSlug)}`);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || 'Public portal not found');
+  }
+  return data;
+}
+
+export async function fetchPublicForm(formSlug) {
+  const response = await fetch(`${API_BASE_URL}/api/public/form/${encodeURIComponent(formSlug)}`);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || 'Published form not found');
+  }
+  return data.form;
+}
+
+export async function downloadPublicFilledPdf(formSlug, formData, fallbackFilename = 'Official_Form.pdf') {
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}/api/public/form/${encodeURIComponent(formSlug)}/generate-pdf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ formData }),
+    });
+  } catch {
+    throw new Error(`Cannot reach server at ${API_BASE_URL}.`);
+  }
+
+  if (!response.ok) {
+    let errorDetail = 'Failed to generate stamped document';
+    try {
+      const errJson = await response.json();
+      if (errJson.detail) errorDetail = errJson.detail;
+    } catch {
+      // ignore
+    }
+    throw new Error(`${errorDetail} (Status ${response.status})`);
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+
+  // Extract filename from header or fallback
+  let downloadName = fallbackFilename;
+  const disp = response.headers.get('Content-Disposition');
+  if (disp && disp.includes('filename=')) {
+    const match = disp.match(/filename="?([^";]+)"?/);
+    if (match && match[1]) downloadName = match[1];
+  }
+
+  a.download = downloadName;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  }, 100);
+
+  return downloadName;
+}
+
 export default {
   API_BASE_URL,
   checkBackendHealth,
@@ -227,8 +506,27 @@ export default {
   getTemplate,
   deleteTemplate,
   getPageImageUrl,
+  getFormPreviewUrl,
   getDocumentPdfUrl,
   downloadFilledPdf,
+  getAuthToken,
+  setAuthToken,
+  getStoredUser,
+  setStoredUser,
+  clearAuthSession,
+  registerUser,
+  loginUser,
+  fetchCurrentUser,
+  updateUserProfile,
+  fetchUserForms,
+  fetchUserForm,
+  saveUserForm,
+  updateFormStatus,
+  deleteUserForm,
+  fetchPublicPortal,
+  fetchPublicForm,
+  downloadPublicFilledPdf,
 };
+
 
 

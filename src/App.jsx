@@ -8,6 +8,11 @@ import UploadView from './components/UploadView';
 import ConnectorLines from './components/ConnectorLines';
 import PreviewMode from './components/PreviewMode';
 import LogicDrawer from './components/LogicDrawer';
+import AuthModal from './components/AuthModal';
+import CreatorDashboard from './components/CreatorDashboard';
+import PublicPortalView from './components/PublicPortalView';
+import ClientFillView from './components/ClientFillView';
+import QrCodeModal from './components/QrCodeModal';
 import { CheckCircle2 } from 'lucide-react';
 import { INITIAL_FIELDS } from './constants/formFields';
 import { loadPdfDocument, extractClientFieldsFromPdf } from './utils/pdfRenderer';
@@ -18,12 +23,35 @@ import {
   fetchSampleAssignment,
   fetchSamplePdf,
   saveTemplate,
-  getPageImageUrl
+  getPageImageUrl,
+  getStoredUser,
+  setStoredUser,
+  clearAuthSession,
+  fetchCurrentUser,
+  saveUserForm,
+  fetchUserForm
 } from './services/api';
 
 export default function App() {
-  // App view state: 'upload' (landing screen) or 'editor' (split-screen workspace)
+  // App view state: 'upload' (landing), 'dashboard' (creator portal), 'editor' (builder), 'portal' (public kiosk), 'fill' (client form)
   const [currentView, setCurrentView] = useState('upload');
+
+  // Creator Authentication & Session state
+  const [currentUser, setCurrentUser] = useState(() => getStoredUser());
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState('login');
+  const [pendingAuthAction, setPendingAuthAction] = useState(null); // 'draft' or 'publish'
+
+  // Form persistence ID & status
+  const [currentSavedFormId, setCurrentSavedFormId] = useState(null);
+  const [currentFormStatus, setCurrentFormStatus] = useState('draft'); // 'draft' | 'published'
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  // Kiosk & Public Portal Routing
+  const [activePortalSlug, setActivePortalSlug] = useState(null);
+  const [activeFillSlug, setActiveFillSlug] = useState(null);
+  const [publishedQrModalData, setPublishedQrModalData] = useState(null);
 
   const [documentName, setDocumentName] = useState('Assignment_1_F23-2353.pdf');
   const [documentId, setDocumentId] = useState('assignment');
@@ -372,39 +400,155 @@ export default function App() {
     setCurrentView('editor');
   };
 
-  // Human-in-the-Loop Template Memory Saver (FastAPI + SQLite)
-  const handleSaveTemplate = async () => {
-    if (!currentFingerprint) {
-      showToast('⚠️ No structural fingerprint available for this document yet.');
+  // Synchronize URL Hash Routes & Session Check
+  useEffect(() => {
+    fetchCurrentUser().then(user => {
+      if (user) setCurrentUser(user);
+    });
+
+    const parseHashRoute = () => {
+      const hash = window.location.hash || '';
+      if (hash.startsWith('#/portal/')) {
+        const slug = hash.replace('#/portal/', '').split('?')[0];
+        setActivePortalSlug(slug);
+        setCurrentView('portal');
+      } else if (hash.startsWith('#/fill/')) {
+        const slug = hash.replace('#/fill/', '').split('?')[0];
+        setActiveFillSlug(slug);
+        setCurrentView('fill');
+      } else if (hash === '#/dashboard') {
+        setCurrentView('dashboard');
+      } else if (hash === '#/editor' || hash === '#/builder') {
+        setCurrentView('editor');
+      } else if (hash === '#/upload') {
+        setCurrentView('upload');
+      }
+    };
+
+    parseHashRoute();
+    window.addEventListener('hashchange', parseHashRoute);
+    return () => window.removeEventListener('hashchange', parseHashRoute);
+  }, []);
+
+  // Save as Private Draft
+  const handleSaveDraft = async () => {
+    if (!currentUser) {
+      setPendingAuthAction('draft');
+      setAuthModalMode('login');
+      setIsAuthModalOpen(true);
       return;
     }
 
-    setIsSavingTemplate(true);
-    showToast('Saving template to local SQLite database...');
+    setIsSavingDraft(true);
+    showToast('Saving draft to your account...');
 
     try {
       const payload = {
-        fingerprint: currentFingerprint,
-        name: formMeta.title || documentName.replace('.pdf', ''),
+        id: currentSavedFormId,
+        title: formMeta.title || documentName.replace('.pdf', ''),
         description: formMeta.description || '',
+        originalFilename: documentName,
+        documentId: documentId,
+        status: 'draft',
+        pageCount: totalPages || 1,
+        fingerprint: currentFingerprint || '',
         fields: fields,
         formMeta: {
           ...formMeta,
           logicRules: logicRules
         },
-        pageCount: totalPages || 1
+        logicRules: logicRules
       };
 
-      await saveTemplate(payload);
-      setIsTemplateMatch(true);
-      setMatchedTemplateName(payload.name);
-      showToast(`✨ Template learned! Permanently saved ${fields.length} customized fields and ${logicRules.length} logic rules to SQLite.`);
+      const saved = await saveUserForm(payload);
+      setCurrentSavedFormId(saved.id);
+      setCurrentFormStatus('draft');
+      showToast('💾 Draft successfully saved to your creator account!');
     } catch (err) {
-      console.error('Template save error:', err);
-      showToast(`⚠️ Could not save template: ${err.message}`);
+      console.error('Draft save error:', err);
+      showToast(`⚠️ Could not save draft: ${err.message}`);
     } finally {
-      setIsSavingTemplate(false);
+      setIsSavingDraft(false);
     }
+  };
+
+  // Publish Form to Live Portal
+  const handlePublish = async () => {
+    if (!currentUser) {
+      setPendingAuthAction('publish');
+      setAuthModalMode('login');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    setIsPublishing(true);
+    showToast('Publishing form to your live portal...');
+
+    try {
+      const payload = {
+        id: currentSavedFormId,
+        title: formMeta.title || documentName.replace('.pdf', ''),
+        description: formMeta.description || '',
+        originalFilename: documentName,
+        documentId: documentId,
+        status: 'published',
+        pageCount: totalPages || 1,
+        fingerprint: currentFingerprint || '',
+        fields: fields,
+        formMeta: {
+          ...formMeta,
+          logicRules: logicRules
+        },
+        logicRules: logicRules
+      };
+
+      const saved = await saveUserForm(payload);
+      setCurrentSavedFormId(saved.id);
+      setCurrentFormStatus('published');
+      setPublishedQrModalData({
+        formSlug: saved.formSlug,
+        title: saved.title
+      });
+      showToast(`🚀 Form published! Live on your public kiosk portal.`);
+    } catch (err) {
+      console.error('Publish error:', err);
+      showToast(`⚠️ Could not publish form: ${err.message}`);
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  // Load an existing saved form from CreatorDashboard
+  const handleEditSavedForm = async (formId) => {
+    try {
+      showToast('Loading form schema...');
+      const savedForm = await fetchUserForm(formId);
+      if (!savedForm) return;
+
+      setCurrentSavedFormId(savedForm.id);
+      setCurrentFormStatus(savedForm.status || 'draft');
+      setDocumentName(savedForm.originalFilename || 'Document.pdf');
+      setTotalPages(savedForm.pageCount || 1);
+      setCurrentFingerprint(savedForm.fingerprint || null);
+      setFields(savedForm.fields || []);
+      setFormMeta(prev => ({
+        ...prev,
+        title: savedForm.title,
+        description: savedForm.description,
+        ...(savedForm.formMeta || {})
+      }));
+      setLogicRules(savedForm.logicRules || []);
+      setCurrentView('editor');
+      window.location.hash = '#/editor';
+      showToast(`Opened "${savedForm.title}" in workspace.`);
+    } catch (err) {
+      showToast(`⚠️ Could not load form: ${err.message}`);
+    }
+  };
+
+  // Human-in-the-Loop Template Memory Saver (Legacy fingerprint)
+  const handleSaveTemplate = async () => {
+    await handleSaveDraft();
   };
 
   // Auto-import detected fields from PyMuPDF backend into the FormCanvas
@@ -739,11 +883,6 @@ export default function App() {
     setSelectedFieldId(id);
   };
 
-  const handlePublish = () => {
-    handleSaveTemplate();
-    showToast(`🚀 Published! Form with ${fields.length} mapped fields is live.`);
-  };
-
   const selectedField = React.useMemo(() => {
     if (!selectedFieldId) return null;
 
@@ -811,14 +950,64 @@ export default function App() {
     return idx >= 0 ? idx + 2 : 1;
   };
 
-  // VIEW 1: Landing Screen
-  if (currentView === 'upload') {
+  // VIEW: Public Kiosk Agency Portal (Walk-in Clients)
+  if (currentView === 'portal') {
+    return (
+      <PublicPortalView
+        portalSlug={activePortalSlug || currentUser?.portalSlug || 'portal'}
+        onSelectForm={(formSlug) => {
+          setActiveFillSlug(formSlug);
+          setCurrentView('fill');
+          window.location.hash = `#/fill/${formSlug}`;
+        }}
+      />
+    );
+  }
+
+  // VIEW: Public Zero-Retention Client Form Filling & Instant PDF Download
+  if (currentView === 'fill') {
+    return (
+      <ClientFillView
+        formSlug={activeFillSlug}
+        onBackToPortal={() => {
+          if (activePortalSlug) {
+            window.location.hash = `#/portal/${activePortalSlug}`;
+          } else if (currentUser?.portalSlug) {
+            window.location.hash = `#/portal/${currentUser.portalSlug}`;
+          } else {
+            setCurrentView('upload');
+            window.location.hash = '';
+          }
+        }}
+      />
+    );
+  }
+
+  // VIEW: Creator Workspace Dashboard (My Forms, Drafts, Published, Kiosk Placard)
+  if (currentView === 'dashboard') {
     return (
       <>
-        <UploadView
-          onUploadFile={handleUploadPdf}
-          onSelectSample={handleSelectSample}
-          isUploading={isUploading}
+        <CreatorDashboard
+          currentUser={currentUser}
+          onLogout={() => {
+            clearAuthSession();
+            setCurrentUser(null);
+            setCurrentView('upload');
+            window.location.hash = '';
+            showToast('Signed out of creator workspace.');
+          }}
+          onCreateNewForm={() => {
+            setCurrentSavedFormId(null);
+            setCurrentFormStatus('draft');
+            setCurrentView('upload');
+            window.location.hash = '#/upload';
+          }}
+          onEditForm={handleEditSavedForm}
+          onViewPortal={(portalSlug) => {
+            setActivePortalSlug(portalSlug);
+            setCurrentView('portal');
+            window.location.hash = `#/portal/${portalSlug}`;
+          }}
         />
         {toastMessage && (
           <div className="fixed bottom-5 right-5 z-50 bg-slate-900/95 text-white border border-slate-700/80 px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2.5 text-xs font-medium animate-bounce">
@@ -830,7 +1019,55 @@ export default function App() {
     );
   }
 
-  // VIEW 2: Full-Screen Live Preview (Exact Match to User's Uploaded Screenshot)
+  // VIEW: Landing Screen (Upload PDF or Open Dashboard)
+  if (currentView === 'upload') {
+    return (
+      <>
+        <UploadView
+          onUploadFile={handleUploadPdf}
+          onSelectSample={handleSelectSample}
+          isUploading={isUploading}
+          currentUser={currentUser}
+          onOpenAuth={() => {
+            setAuthModalMode('login');
+            setIsAuthModalOpen(true);
+          }}
+          onOpenDashboard={() => {
+            setCurrentView('dashboard');
+            window.location.hash = '#/dashboard';
+          }}
+        />
+        {/* Creator Authentication Modal */}
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => {
+            setIsAuthModalOpen(false);
+            setPendingAuthAction(null);
+          }}
+          onSuccess={(user) => {
+            setCurrentUser(user);
+            setIsAuthModalOpen(false);
+            showToast(`Welcome, ${user.displayName || user.email}!`);
+            if (pendingAuthAction === 'draft') {
+              handleSaveDraft();
+            } else if (pendingAuthAction === 'publish') {
+              handlePublish();
+            }
+            setPendingAuthAction(null);
+          }}
+          initialMode={authModalMode}
+        />
+        {toastMessage && (
+          <div className="fixed bottom-5 right-5 z-50 bg-slate-900/95 text-white border border-slate-700/80 px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2.5 text-xs font-medium animate-bounce">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{toastMessage}</span>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // VIEW: Full-Screen Live Preview (Exact Match to User's Uploaded Screenshot)
   if (activeTab === 'preview') {
     return (
       <PreviewMode
@@ -847,7 +1084,7 @@ export default function App() {
     );
   }
 
-  // VIEW 3: Split-Screen Editor Workspace
+  // VIEW: Split-Screen Editor Workspace
   return (
     <div className="h-screen w-full flex flex-col overflow-hidden bg-slate-100 antialiased font-sans text-slate-800">
       {/* Top Navigation Bar */}
@@ -866,12 +1103,30 @@ export default function App() {
         logicCount={logicRules.filter(r => r.enabled !== false).length}
         onToggleLogicDrawer={handleToggleLogicDrawer}
         onPublish={handlePublish}
+        onSaveDraft={handleSaveDraft}
+        isSaving={isSavingDraft || isPublishing}
+        formStatus={currentFormStatus}
+        currentUser={currentUser}
+        onOpenAuth={() => {
+          setAuthModalMode('login');
+          setIsAuthModalOpen(true);
+        }}
+        onOpenDashboard={() => {
+          setCurrentView('dashboard');
+          window.location.hash = '#/dashboard';
+        }}
         onUploadPdf={handleUploadPdf}
-        onBack={() => setCurrentView('upload')}
+        onBack={() => {
+          if (currentUser) {
+            setCurrentView('dashboard');
+            window.location.hash = '#/dashboard';
+          } else {
+            setCurrentView('upload');
+            window.location.hash = '';
+          }
+        }}
         isTemplateMatch={isTemplateMatch}
         matchedTemplateName={matchedTemplateName}
-        isSavingTemplate={isSavingTemplate}
-        onSaveTemplate={handleSaveTemplate}
       />
 
       {/* Main Workspace: Always visible with Slide-Over Logic Drawer */}
@@ -1019,6 +1274,40 @@ export default function App() {
           onNavigateToLogics={(fieldId) => handleOpenLogicDrawer(fieldId)}
           fieldIndex={fields.findIndex(f => f.id === selectedField.id) + 1}
           pageBreakNumber={getPageBreakNumber(selectedField)}
+        />
+      )}
+
+      {/* Creator Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setPendingAuthAction(null);
+        }}
+        onSuccess={(user) => {
+          setCurrentUser(user);
+          setIsAuthModalOpen(false);
+          showToast(`Welcome back, ${user.displayName || user.email}!`);
+          if (pendingAuthAction === 'draft') {
+            handleSaveDraft();
+          } else if (pendingAuthAction === 'publish') {
+            handlePublish();
+          }
+          setPendingAuthAction(null);
+        }}
+        initialMode={authModalMode}
+      />
+
+      {/* Published Form QR Code & Kiosk Placard Modal */}
+      {publishedQrModalData && (
+        <QrCodeModal
+          isOpen={Boolean(publishedQrModalData)}
+          onClose={() => setPublishedQrModalData(null)}
+          title="Published Form Kiosk"
+          formTitle={publishedQrModalData.title}
+          url={`${window.location.origin}/#/fill/${publishedQrModalData.formSlug}`}
+          agencyName={currentUser?.agencyName || 'Consular & Document Services'}
+          isSingleForm={true}
         />
       )}
 

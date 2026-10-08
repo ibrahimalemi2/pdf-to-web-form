@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CheckCircle2,
   GitBranch,
@@ -17,7 +17,8 @@ import {
   Globe,
   Download,
   Loader2,
-  Upload
+  Upload,
+  ShieldCheck
 } from 'lucide-react';
 import { downloadFilledPdf } from '../services/api';
 import { computeDynamicFieldStates } from '../utils/logicEngine';
@@ -32,7 +33,12 @@ export default function PreviewMode({
   documentName = "Assignment_1_F23-2353.pdf",
   documentId = "assignment",
   pdfFile = null,
-  onExitPreview = () => {}
+  onExitPreview = () => {},
+  isPublic = false,
+  publicFormSlug = null,
+  onBackToPortal = null,
+  onCustomDownload = null,
+  agencyName = "Official Kiosk"
 }) {
   // Mode: 'classic' or 'conversational' (matching user's screenshot)
   const [formMode, setFormMode] = useState('classic'); // 'classic' | 'conversational'
@@ -50,12 +56,33 @@ export default function PreviewMode({
     return initial;
   });
 
+  // Sync formData whenever schema fields update dynamically
+  useEffect(() => {
+    if (!fields || fields.length === 0) return;
+    setFormData(prev => {
+      const next = { ...prev };
+      let hasChanges = false;
+      fields.forEach(f => {
+        if (next[f.id] === undefined) {
+          hasChanges = true;
+          if (f.type === 'Checkbox') {
+            next[f.id] = Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []);
+          } else {
+            next[f.id] = f.value || '';
+          }
+        }
+      });
+      return hasChanges ? next : prev;
+    });
+  }, [fields]);
+
   const [errors, setErrors] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [activeSigningField, setActiveSigningField] = useState(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadedFileName, setDownloadedFileName] = useState('');
 
   // Reactive dynamic states computed from active logic rules and current user responses
   const dynamicStates = React.useMemo(() => {
@@ -279,7 +306,7 @@ export default function PreviewMode({
     currentFields.forEach(f => {
       const isHidden = dynamicStates[f.id]?.hidden ?? f.hidden;
       const isRequired = dynamicStates[f.id]?.required ?? f.required;
-      if (isHidden || f.type === 'Header' || f.type === 'Section' || f.type === 'Section Break' || f.type === 'Page Break' || f.type === 'Divider' || f.type === 'Image' || (f.type === 'Photo' && f.label?.trim().toLowerCase().includes('image'))) return;
+      if (isHidden || f.type === 'Header' || f.type === 'Section' || f.type === 'Section Break' || f.type === 'Page Break' || f.type === 'Divider' || f.type === 'Page Buttons' || f.type === 'Submission Buttons' || f.type === 'Image' || (f.type === 'Photo' && f.label?.trim().toLowerCase().includes('image'))) return;
       if (isRequired) {
         const val = formData[f.id];
         if (f.type === 'Checkbox') {
@@ -313,7 +340,7 @@ export default function PreviewMode({
       stepItem.fields.forEach(f => {
         const isHidden = dynamicStates[f.id]?.hidden ?? f.hidden;
         const isRequired = dynamicStates[f.id]?.required ?? f.required;
-        if (isHidden || f.type === 'Header' || f.type === 'Section' || f.type === 'Section Break' || f.type === 'Page Break' || f.type === 'Divider' || f.type === 'Image' || (f.type === 'Photo' && f.label?.trim().toLowerCase().includes('image'))) return;
+        if (isHidden || f.type === 'Header' || f.type === 'Section' || f.type === 'Section Break' || f.type === 'Page Break' || f.type === 'Divider' || f.type === 'Page Buttons' || f.type === 'Submission Buttons' || f.type === 'Image' || (f.type === 'Photo' && f.label?.trim().toLowerCase().includes('image'))) return;
         if (isRequired) {
           const val = formData[f.id];
           if (f.type === 'Checkbox') {
@@ -340,7 +367,12 @@ export default function PreviewMode({
 
     setErrors({});
     setIsSubmitted(true);
-    showToast('🎉 Form successfully submitted and data captured locally!');
+    if (isPublic) {
+      // In public kiosk portal, trigger instantaneous PDF stamping and download
+      handleDownloadFilledPdf();
+    } else {
+      showToast('🎉 Form successfully submitted and data captured locally!');
+    }
   };
 
   const handleDownloadFilledPdf = async () => {
@@ -362,14 +394,20 @@ export default function PreviewMode({
         return f;
       });
 
-      const fileName = await downloadFilledPdf({
-        documentId,
-        filename: documentName,
-        formData: activeFormData,
-        fields: activeFields,
-        pdfFile
-      });
-      showToast(`🎉 Downloaded: ${fileName}`);
+      let fileName;
+      if (onCustomDownload) {
+        fileName = await onCustomDownload(activeFormData, activeFields);
+      } else {
+        fileName = await downloadFilledPdf({
+          documentId,
+          filename: documentName,
+          formData: activeFormData,
+          fields: activeFields,
+          pdfFile
+        });
+      }
+      setDownloadedFileName(fileName || `${cleanTitle}.pdf`);
+      showToast(`🎉 Downloaded: ${fileName || 'Official Document'}`);
     } catch (err) {
       console.error('Download filled PDF error:', err);
       showToast(`⚠️ Could not generate PDF: ${err.message}`);
@@ -385,9 +423,9 @@ export default function PreviewMode({
     setCurrentStepIndex(0);
   };
 
-  // Filter interactive fields for Conversational mode (excluding headers, dividers, and conditionally hidden fields)
+  // Filter interactive fields for Conversational mode (excluding headers, dividers, button placeholders, and conditionally hidden fields)
   const interactiveFields = fields.filter(
-    f => f.type !== 'Header' && f.type !== 'Section' && f.type !== 'Section Break' && f.type !== 'Page Break' && f.type !== 'Divider' && f.type !== 'Image' && !(dynamicStates[f.id]?.hidden ?? f.hidden)
+    f => f.type !== 'Header' && f.type !== 'Section' && f.type !== 'Section Break' && f.type !== 'Page Break' && f.type !== 'Divider' && f.type !== 'Page Buttons' && f.type !== 'Submission Buttons' && f.type !== 'Image' && !(dynamicStates[f.id]?.hidden ?? f.hidden)
   );
 
   const currentConversationalField = interactiveFields[currentStepIndex] || interactiveFields[0];
@@ -1179,7 +1217,7 @@ export default function PreviewMode({
   };
 
   return (
-    <div className="h-screen w-full flex flex-col overflow-hidden bg-[#f4f5f7] antialiased font-sans select-none">
+    <div className="h-screen w-full flex flex-col overflow-hidden bg-[#f4f5f7] antialiased font-sans">
       {/* ============================================================ */}
       {/* TOP HEADER BAR (Exact Match to Design Requirements)         */}
       {/* ============================================================ */}
@@ -1187,18 +1225,33 @@ export default function PreviewMode({
         {/* Blue vertical accent on far left edge */}
         <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-blue-600" />
 
-        {/* Left: Breadcrumbs */}
-        <div className="flex items-center gap-2 text-xs sm:text-sm pl-2">
-          <button
-            type="button"
-            onClick={onExitPreview}
-            className="font-medium text-slate-800 hover:text-blue-600 transition flex items-center gap-1.5 cursor-pointer"
-          >
-            <span>Back to Editor</span>
-          </button>
-          <span className="text-slate-300 font-normal">/</span>
-          <span className="text-slate-400 font-normal">Preview & Submission</span>
-        </div>
+        {/* Left: Breadcrumbs or Back to Portal */}
+        {isPublic ? (
+          <div className="flex items-center gap-2 text-xs sm:text-sm pl-2">
+            <button
+              type="button"
+              onClick={onBackToPortal || onExitPreview}
+              className="font-semibold text-slate-700 hover:text-blue-600 transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Portal</span>
+            </button>
+            <span className="text-slate-300 font-normal">/</span>
+            <span className="text-slate-600 font-semibold truncate max-w-[180px] sm:max-w-none">{cleanTitle}</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-xs sm:text-sm pl-2">
+            <button
+              type="button"
+              onClick={onExitPreview}
+              className="font-medium text-slate-800 hover:text-blue-600 transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>Back to Editor</span>
+            </button>
+            <span className="text-slate-300 font-normal">/</span>
+            <span className="text-slate-400 font-normal">Preview & Submission</span>
+          </div>
+        )}
 
         {/* Center: Classic vs Conversational Toggle Pill */}
         <div className="flex items-center bg-[#eef0f3] p-1 rounded-xl border border-slate-200/80">
@@ -1233,131 +1286,162 @@ export default function PreviewMode({
           </button>
         </div>
 
-        {/* Right: Actions (More, Fill Sample Data, Design Form, Help, PlatoForms Logo) */}
-        <div className="flex items-center gap-2 sm:gap-2.5">
-          {/* More Dropdown */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowMoreMenu(prev => !prev)}
-              className="hidden sm:flex items-center gap-1 bg-white hover:bg-slate-50 border border-slate-200/90 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 transition cursor-pointer shadow-2xs"
-            >
-              <span>More</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-            </button>
+        {/* Right: Actions */}
+        {isPublic ? (
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200 shadow-2xs">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="hidden sm:inline">Zero-Retention In-Memory Stamping</span>
+              <span className="sm:hidden">Zero-Retention</span>
+            </div>
 
-            {showMoreMenu && (
-              <div className="absolute right-0 mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-xl py-1 text-xs z-50 animate-in fade-in zoom-in-95 duration-150">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMoreMenu(false);
-                    showToast('Copied shareable form link to clipboard');
-                  }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-slate-700 cursor-pointer"
-                >
-                  <Share2 className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Share Form</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMoreMenu(false);
-                    showToast('Embed HTML snippet copied');
-                  }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-slate-700 cursor-pointer"
-                >
-                  <Code className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Embed Code</span>
-                </button>
-                <div className="h-px bg-slate-100 my-1" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMoreMenu(false);
-                    handleDownloadFilledPdf();
-                  }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-blue-50 flex items-center gap-2 text-blue-600 font-medium cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download Filled PDF</span>
-                </button>
+            {/* ConsularDoc Brand Badge */}
+            <div
+              title={agencyName || "ConsularDoc Engine"}
+              className="w-7 h-7 rounded-md bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center ml-1 shadow-xs text-white"
+            >
+              <svg
+                className="w-4 h-4 text-white"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M4 4h16v4H4z" />
+                <path d="M4 10h12v4H4z" />
+                <path d="M4 16h8v4H4z" />
+              </svg>
+            </div>
+          </div>
+        ) : (
+          /* Editor Actions: More, Logic Rules, Fill Sample Data, Design Form, Help, PlatoForms Logo */
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* More Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowMoreMenu(prev => !prev)}
+                className="hidden sm:flex items-center gap-1 bg-white hover:bg-slate-50 border border-slate-200/90 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 transition cursor-pointer shadow-2xs"
+              >
+                <span>More</span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+
+              {showMoreMenu && (
+                <div className="absolute right-0 mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-xl py-1 text-xs z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      showToast('Copied shareable form link to clipboard');
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-slate-700 cursor-pointer"
+                  >
+                    <Share2 className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Share Form</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      showToast('Embed HTML snippet copied');
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-slate-700 cursor-pointer"
+                  >
+                    <Code className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Embed Code</span>
+                  </button>
+                  <div className="h-px bg-slate-100 my-1" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      handleDownloadFilledPdf();
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-blue-50 flex items-center gap-2 text-blue-600 font-medium cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download Filled PDF</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Active Logic Rules Badge */}
+            {logicRules.length > 0 && (
+              <div
+                title={`${logicRules.filter(r => r.enabled !== false).length} conditional logic rules evaluating dynamically`}
+                className="hidden md:flex items-center gap-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200/90 px-2.5 py-1 rounded-lg text-xs font-semibold select-none shadow-2xs"
+              >
+                <GitBranch className="w-3.5 h-3.5 text-indigo-600" />
+                <span>{logicRules.filter(r => r.enabled !== false).length} Logic Rules</span>
               </div>
             )}
-          </div>
 
-          {/* Active Logic Rules Badge */}
-          {logicRules.length > 0 && (
+            {/* Fill Sample Data Button */}
+            <button
+              type="button"
+              onClick={handleFillSampleData}
+              title="Auto-fill form inputs with sample document data"
+              className="flex items-center gap-1.5 bg-white hover:bg-slate-50 active:bg-slate-100 border border-slate-200/90 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 transition cursor-pointer active:scale-95 shadow-2xs"
+            >
+              <Sliders className="w-3.5 h-3.5 text-slate-500" />
+              <span className="hidden sm:inline">Fill Sample Data</span>
+            </button>
+
+            {/* Design Form Button (returns to editor) */}
+            <button
+              type="button"
+              onClick={onExitPreview}
+              title="Return to visual form editor"
+              className="flex items-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-200/90 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 transition cursor-pointer shadow-2xs"
+            >
+              <Layers className="w-3.5 h-3.5 text-slate-500" />
+              <span className="hidden sm:inline">Design Form</span>
+            </button>
+
+            {/* Help Circle Icon */}
+            <button
+              type="button"
+              title={`Document: ${documentName}`}
+              className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition cursor-pointer"
+            >
+              <HelpCircle className="w-4 h-4" />
+            </button>
+
+            {/* Chevron Up Icon */}
+            <button
+              type="button"
+              onClick={onExitPreview}
+              title="Close Preview"
+              className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition cursor-pointer"
+            >
+              <ChevronUp className="w-4 h-4" />
+            </button>
+
+            {/* ConsularDoc Brand Badge */}
             <div
-              title={`${logicRules.filter(r => r.enabled !== false).length} conditional logic rules evaluating dynamically`}
-              className="hidden md:flex items-center gap-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200/90 px-2.5 py-1 rounded-lg text-xs font-semibold select-none shadow-2xs"
+              title="ConsularDoc Engine"
+              className="w-7 h-7 rounded-md bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center ml-1 shadow-xs cursor-pointer text-white"
             >
-              <GitBranch className="w-3.5 h-3.5 text-indigo-600" />
-              <span>{logicRules.filter(r => r.enabled !== false).length} Logic Rules</span>
+              <svg
+                className="w-4 h-4 text-white"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M4 4h16v4H4z" />
+                <path d="M4 10h12v4H4z" />
+                <path d="M4 16h8v4H4z" />
+              </svg>
             </div>
-          )}
-
-          {/* Fill Sample Data Button */}
-          <button
-            type="button"
-            onClick={handleFillSampleData}
-            title="Auto-fill form inputs with sample document data"
-            className="flex items-center gap-1.5 bg-white hover:bg-slate-50 active:bg-slate-100 border border-slate-200/90 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 transition cursor-pointer active:scale-95 shadow-2xs"
-          >
-            <Sliders className="w-3.5 h-3.5 text-slate-500" />
-            <span className="hidden sm:inline">Fill Sample Data</span>
-          </button>
-
-          {/* Design Form Button (returns to editor) */}
-          <button
-            type="button"
-            onClick={onExitPreview}
-            title="Return to visual form editor"
-            className="flex items-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-200/90 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 transition cursor-pointer shadow-2xs"
-          >
-            <Layers className="w-3.5 h-3.5 text-slate-500" />
-            <span className="hidden sm:inline">Design Form</span>
-          </button>
-
-          {/* Help Circle Icon */}
-          <button
-            type="button"
-            title={`Document: ${documentName}`}
-            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition cursor-pointer"
-          >
-            <HelpCircle className="w-4 h-4" />
-          </button>
-
-          {/* Chevron Up Icon */}
-          <button
-            type="button"
-            onClick={onExitPreview}
-            title="Close Preview"
-            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition cursor-pointer"
-          >
-            <ChevronUp className="w-4 h-4" />
-          </button>
-
-          {/* ConsularDoc Brand Badge */}
-          <div
-            title="ConsularDoc Engine"
-            className="w-7 h-7 rounded-md bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center ml-1 shadow-xs cursor-pointer text-white"
-          >
-            <svg
-              className="w-4 h-4 text-white"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M4 4h16v4H4z" />
-              <path d="M4 10h12v4H4z" />
-              <path d="M4 16h8v4H4z" />
-            </svg>
           </div>
-        </div>
+        )}
       </header>
 
       {/* ============================================================ */}
@@ -1458,7 +1542,7 @@ export default function PreviewMode({
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
                     {steps[safeStep]?.fields.map((field) => {
-                      if (field.hidden) return null;
+                      if (field.hidden || field.type === 'Page Buttons' || field.type === 'Submission Buttons') return null;
 
                       if (field.type === 'Header') {
                         return (
@@ -1650,6 +1734,96 @@ export default function PreviewMode({
                   })()}
                 </form>
               </div>
+            ) : isPublic ? (
+              /* Public Kiosk Success Submission Card */
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200/90 p-8 sm:p-12 text-center mb-4 animate-in fade-in zoom-in-95 duration-200 max-w-lg mx-auto">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4 border border-emerald-200 shadow-inner">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+
+                <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-bold inline-block mb-3">
+                  Document Stamped & Ready
+                </span>
+
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">
+                  Your Form is Ready!
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mb-6">
+                  {downloadedFileName ? (
+                    <span>Your filled file <strong className="font-mono text-slate-700 font-semibold">{downloadedFileName}</strong> has been stamped and saved to your downloads.</span>
+                  ) : (
+                    <span>Your official PDF document has been accurately stamped with your responses.</span>
+                  )}
+                </p>
+
+                {/* Primary Download Filled PDF Button */}
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
+                  <button
+                    type="button"
+                    onClick={handleDownloadFilledPdf}
+                    disabled={isDownloading}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:from-blue-800 active:to-indigo-800 text-white text-xs sm:text-sm font-bold shadow-lg shadow-blue-500/25 transition cursor-pointer active:scale-95 disabled:opacity-60"
+                  >
+                    {isDownloading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-white" />
+                        <span>Generating Stamped PDF...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4 text-white" />
+                        <span>Download Stamped PDF Again</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Next Steps at the Counter */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-left space-y-3 mb-6">
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    Next Steps at the Counter:
+                  </h4>
+                  <div className="space-y-2.5 text-xs text-slate-700">
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
+                        1
+                      </span>
+                      <span>Open your downloads folder and <strong>print the PDF</strong>.</span>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
+                        2
+                      </span>
+                      <span>Bring the printed document directly to the service desk.</span>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
+                        ✓
+                      </span>
+                      <span className="text-emerald-700 font-medium">
+                        <strong>Zero data stored:</strong> None of your personal responses were saved in any database.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row justify-center gap-3 border-t border-slate-100 pt-5">
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition cursor-pointer"
+                  >
+                    Fill Form Again
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onBackToPortal || onExitPreview}
+                    className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition cursor-pointer shadow-sm"
+                  >
+                    Return to Kiosk Portal
+                  </button>
+                </div>
+              </div>
             ) : (
               /* Success Submission Card */
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200/90 p-8 sm:p-12 text-center mb-4 animate-in fade-in zoom-in-95 duration-200">
@@ -1799,6 +1973,61 @@ export default function PreviewMode({
                     No questions to display.
                   </div>
                 )}
+              </div>
+            ) : isPublic ? (
+              <div className="bg-white rounded-3xl shadow-xl border border-slate-200/80 p-8 sm:p-10 text-center animate-in fade-in zoom-in-95 duration-200 max-w-lg mx-auto">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4 border border-emerald-200 shadow-inner">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">Form Completed!</h2>
+                <p className="text-xs sm:text-sm text-slate-500 mb-6">All responses entered accurately and recorded.</p>
+                
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
+                  <button
+                    type="button"
+                    onClick={handleDownloadFilledPdf}
+                    disabled={isDownloading}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs sm:text-sm font-bold shadow-lg shadow-blue-500/25 transition cursor-pointer active:scale-95 disabled:opacity-60"
+                  >
+                    {isDownloading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-white" />
+                        <span>Generating Stamped PDF...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4 text-white" />
+                        <span>Download Stamped PDF Again</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left space-y-2 mb-6 text-xs text-slate-700">
+                  <div className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
+                    Next Steps:
+                  </div>
+                  <div>1. Print the downloaded document.</div>
+                  <div>2. Bring the physical sheet to the counter.</div>
+                  <div className="text-emerald-700 font-medium">✓ Zero data was saved to our servers.</div>
+                </div>
+
+                <div className="flex justify-center gap-3 border-t border-slate-100 pt-4">
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
+                  >
+                    Restart
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onBackToPortal || onExitPreview}
+                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold cursor-pointer"
+                  >
+                    Return to Kiosk Portal
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="bg-white rounded-3xl shadow-xl border border-slate-200/80 p-10 text-center animate-in fade-in zoom-in-95 duration-200">
