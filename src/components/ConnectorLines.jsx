@@ -1,6 +1,18 @@
 import React, { useEffect, useMemo, useRef, useCallback } from 'react';
 
-export default function ConnectorLines({
+/**
+ * Helper: check if a field is non-mappable (no connector line to PDF)
+ */
+const isNonMappable = (f) =>
+  !f ||
+  f.type === 'Section' ||
+  f.type === 'Section Break' ||
+  f.type === 'Divider' ||
+  f.type === 'Page Break' ||
+  f.type === 'Image' ||
+  (f.type === 'Photo' && f.label?.trim().toLowerCase() === 'image');
+
+function ConnectorLinesComponent({
   containerRef,
   fields = [],
   selectedFieldId = null,
@@ -8,50 +20,43 @@ export default function ConnectorLines({
   onSelectField = () => {},
   visible = true
 }) {
-  // Elements map to store direct DOM references for high-performance zero-lag updates
   const elementsRef = useRef(new Map());
   const animFrameId = useRef(null);
 
-  // Helper: check if a field is non-mappable (no connector line to PDF)
-  const isNonMappable = (f) =>
-    !f ||
-    f.type === 'Section' ||
-    f.type === 'Section Break' ||
-    f.type === 'Divider' ||
-    f.type === 'Page Break' ||
-    f.type === 'Image' ||
-    (f.type === 'Photo' && f.label?.trim().toLowerCase() === 'image');
+  // Mappability check for selected and hovered fields
+  const selectedField = useMemo(() => {
+    return fields.find((f) => f.id === selectedFieldId) || null;
+  }, [fields, selectedFieldId]);
+
+  const hoveredField = useMemo(() => {
+    return fields.find((f) => f.id === hoveredFieldId) || null;
+  }, [fields, hoveredFieldId]);
+
+  const isSelectedMappable = selectedField && !isNonMappable(selectedField);
+  const isHoveredMappable = hoveredField && !isNonMappable(hoveredField);
 
   // Determine active fields (at most 2: selected and hovered)
+  // Stable: does NOT rebuild array when field text/value changes
   const activeFields = useMemo(() => {
     if (!visible) return [];
     const list = [];
-    if (selectedFieldId) {
-      const field = fields.find((f) => f.id === selectedFieldId);
-      if (field && !isNonMappable(field)) {
-        list.push({
-          id: selectedFieldId,
-          isSelected: true,
-          isHovered: false,
-          label: field.label
-        });
-      }
+    if (selectedFieldId && isSelectedMappable) {
+      list.push({
+        id: selectedFieldId,
+        isSelected: true,
+        isHovered: false
+      });
     }
-    if (hoveredFieldId && hoveredFieldId !== selectedFieldId) {
-      const field = fields.find((f) => f.id === hoveredFieldId);
-      if (field && !isNonMappable(field)) {
-        list.push({
-          id: hoveredFieldId,
-          isSelected: false,
-          isHovered: true,
-          label: field.label
-        });
-      }
+    if (hoveredFieldId && hoveredFieldId !== selectedFieldId && isHoveredMappable) {
+      list.push({
+        id: hoveredFieldId,
+        isSelected: false,
+        isHovered: true
+      });
     }
     return list;
-  }, [visible, fields, selectedFieldId, hoveredFieldId]);
+  }, [visible, selectedFieldId, hoveredFieldId, isSelectedMappable, isHoveredMappable]);
 
-  // Synchronously compute and apply real-time coordinates directly to DOM nodes
   const updatePositions = useCallback(() => {
     if (!visible || !containerRef?.current || activeFields.length === 0) return;
 
@@ -63,12 +68,12 @@ export default function ConnectorLines({
       const domEls = elementsRef.current.get(item.id);
       if (!domEls) return;
 
-      // 1. Locate left anchor pin on FormCanvas
+      // 1. Locate left anchor pin on FormCanvas (fallback to card)
       const fieldAnchor = container.querySelector(`[data-field-anchor="${item.id}"]`);
       const fieldCard = container.querySelector(`[data-field-id="${item.id}"]`);
       const fieldEl = fieldAnchor || fieldCard;
 
-      // 2. Locate right anchor pin on PdfViewer
+      // 2. Locate right anchor pin on PdfViewer (fallback to box)
       const pdfAnchor = container.querySelector(`[data-pdf-anchor="${item.id}"]`);
       const pdfBox = container.querySelector(`[data-pdf-field-id="${item.id}"]`);
       const pdfEl = pdfAnchor || pdfBox;
@@ -84,7 +89,9 @@ export default function ConnectorLines({
       const r1 = fieldAnchor ? fieldAnchor.getBoundingClientRect() : fieldCard.getBoundingClientRect();
       const r2 = pdfAnchor ? pdfAnchor.getBoundingClientRect() : pdfBox.getBoundingClientRect();
 
-      // Precise pin center coordinates relative to the workspace container
+      if (r1.width === 0 || r2.width === 0) return;
+
+      // Center coordinates relative to the workspace container
       const isAnchor1 = !!fieldAnchor;
       const x1 = isAnchor1 ? (r1.left + r1.width / 2 - cRect.left) : (r1.right - cRect.left);
       const y1 = r1.top + r1.height / 2 - cRect.top;
@@ -93,25 +100,11 @@ export default function ConnectorLines({
       const x2 = isAnchor2 ? (r2.left + r2.width / 2 - cRect.left) : (r2.left - cRect.left);
       const y2 = r2.top + r2.height / 2 - cRect.top;
 
-      // Calculate edge distance for smooth, graceful opacity fade
-      // If either anchor is outside the visible screen [0, cRect.height], the line disappears
-      // rather than getting pinned or stuck to the bottom/top of the screen.
-      const fadeMargin = 40;
-      const getEdgeOpacity = (y, height) => {
-        if (y < 0 || y > height) return 0;
-        const edgeDist = Math.min(y, height - y);
-        if (edgeDist < fadeMargin) {
-          return Math.max(0, edgeDist / fadeMargin);
-        }
-        return 1;
-      };
+      // Check if both endpoints are completely scrolled far out of visible bounds
+      const isY1Offscreen = y1 < -100 || y1 > cRect.height + 100;
+      const isY2Offscreen = y2 < -100 || y2 > cRect.height + 100;
 
-      const opacity1 = getEdgeOpacity(y1, cRect.height);
-      const opacity2 = getEdgeOpacity(y2, cRect.height);
-      const opacity = Math.min(opacity1, opacity2);
-
-      // Hide immediately if either endpoint is scrolled out of view
-      if (opacity <= 0.01) {
+      if (isY1Offscreen && isY2Offscreen) {
         if (domEls.group) {
           domEls.group.style.opacity = '0';
           domEls.group.style.pointerEvents = 'none';
@@ -123,7 +116,6 @@ export default function ConnectorLines({
       const dx = Math.max(30, Math.abs(x2 - x1) * 0.45);
       const pathData = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
 
-      // Update DOM nodes directly for zero-latency 60fps/120fps hardware scrolling
       if (domEls.hitPath) domEls.hitPath.setAttribute('d', pathData);
       if (domEls.linePath) domEls.linePath.setAttribute('d', pathData);
       if (domEls.circle1) {
@@ -135,27 +127,54 @@ export default function ConnectorLines({
         domEls.circle2.setAttribute('cy', String(y2));
       }
       if (domEls.group) {
-        domEls.group.style.opacity = String(opacity);
+        domEls.group.style.opacity = '1';
         domEls.group.style.pointerEvents = 'auto';
       }
     });
   }, [visible, containerRef, activeFields]);
 
-  // Request update aligned with monitor refresh rate without dropping frames
+  const updatePositionsRef = useRef(updatePositions);
+  updatePositionsRef.current = updatePositions;
+
   const requestUpdate = useCallback(() => {
     if (animFrameId.current) return;
     animFrameId.current = requestAnimationFrame(() => {
       animFrameId.current = null;
-      updatePositions();
+      updatePositionsRef.current?.();
     });
-  }, [updatePositions]);
+  }, []);
 
-  // Attach passive capture scroll listeners across container, subpanels, and window
+  // Continuous tracking loop during selection transitions & smooth scrolls
   useEffect(() => {
     updatePositions();
-    const t1 = setTimeout(updatePositions, 40);
-    const t2 = setTimeout(updatePositions, 150);
+    let startTime = performance.now();
+    let rafId = null;
 
+    const trackLoop = (currentTime) => {
+      updatePositions();
+      if (currentTime - startTime < 450) {
+        rafId = requestAnimationFrame(trackLoop);
+      }
+    };
+
+    rafId = requestAnimationFrame(trackLoop);
+
+    const t1 = setTimeout(updatePositions, 30);
+    const t2 = setTimeout(updatePositions, 100);
+    const t3 = setTimeout(updatePositions, 250);
+    const t4 = setTimeout(updatePositions, 450);
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
+    };
+  }, [activeFields, updatePositions]);
+
+  // Passive capture scroll and resize listeners across container and window
+  useEffect(() => {
     const container = containerRef?.current;
     if (container) {
       container.addEventListener('scroll', requestUpdate, { capture: true, passive: true });
@@ -170,8 +189,6 @@ export default function ConnectorLines({
     }
 
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
       if (animFrameId.current) cancelAnimationFrame(animFrameId.current);
       if (container) {
         container.removeEventListener('scroll', requestUpdate, { capture: true, passive: true });
@@ -180,15 +197,20 @@ export default function ConnectorLines({
       window.removeEventListener('resize', requestUpdate, { passive: true });
       if (resizeObserver) resizeObserver.disconnect();
     };
-  }, [requestUpdate, updatePositions, containerRef]);
+  }, [containerRef, requestUpdate]);
 
   if (!visible || activeFields.length === 0) return null;
 
   return (
     <svg
-      className="absolute inset-0 w-full h-full pointer-events-none z-25 overflow-visible"
-      style={{ minWidth: '100%', minHeight: '100%' }}
+      className="absolute inset-0 w-full h-full pointer-events-none overflow-visible"
+      style={{ minWidth: '100%', minHeight: '100%', zIndex: 35 }}
     >
+      <defs>
+        <filter id="connector-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodColor="#2563eb" floodOpacity="0.25" />
+        </filter>
+      </defs>
       {activeFields.map((item) => (
         <g
           key={item.id}
@@ -201,6 +223,7 @@ export default function ConnectorLines({
                 circle1: el.querySelector('.connector-c1'),
                 circle2: el.querySelector('.connector-c2')
               });
+              requestUpdate();
             } else {
               elementsRef.current.delete(item.id);
             }
@@ -214,38 +237,41 @@ export default function ConnectorLines({
             className="connector-hit"
             fill="none"
             stroke="transparent"
-            strokeWidth="14"
+            strokeWidth="16"
           />
 
-          {/* Visible Connecting Curve (Notice: NO transition on path geometry for zero-lag 60fps tracking) */}
+          {/* Visible Connecting Curve */}
           <path
             className="connector-line"
             fill="none"
-            stroke="#3b82f6"
-            strokeWidth={item.isSelected ? "2" : "1.6"}
+            stroke="#2563eb"
+            strokeWidth={item.isSelected ? "2.2" : "1.8"}
             strokeDasharray={item.isSelected ? "none" : "4 4"}
             strokeLinecap="round"
+            filter="url(#connector-shadow)"
           />
 
           {/* Left anchor circle pin on Form Card edge */}
           <circle
             className="connector-c1"
-            r="3.5"
+            r="4"
             fill="#ffffff"
-            stroke="#3b82f6"
-            strokeWidth={item.isSelected ? "2" : "1.8"}
+            stroke="#2563eb"
+            strokeWidth={item.isSelected ? "2.2" : "1.8"}
           />
 
           {/* Right anchor circle pin on PDF Box edge */}
           <circle
             className="connector-c2"
-            r="3.5"
+            r="4"
             fill="#ffffff"
-            stroke="#3b82f6"
-            strokeWidth={item.isSelected ? "2" : "1.8"}
+            stroke="#2563eb"
+            strokeWidth={item.isSelected ? "2.2" : "1.8"}
           />
         </g>
       ))}
     </svg>
   );
 }
+
+export default React.memo(ConnectorLinesComponent);

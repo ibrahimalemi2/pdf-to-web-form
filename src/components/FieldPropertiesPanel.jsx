@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 
 import { PageBreakIcon, SectionBreakIcon } from './SidebarTools';
+import { FastInput, FastTextarea } from './FastInput';
 
 const ICON_MAP = {
   'Short Text': Type,
@@ -64,7 +65,7 @@ const FIELD_TYPE_OPTIONS = [
   { value: 'File Upload', label: 'File Upload' }
 ];
 
-export default function FieldPropertiesPanel({
+function FieldPropertiesPanel({
   field,
   onUpdateField,
   onDeleteField,
@@ -302,7 +303,7 @@ export default function FieldPropertiesPanel({
             <div className="space-y-1">
               <label className="block text-xs font-normal text-slate-600">Label</label>
               <div className="relative">
-                <input
+                <FastInput
                   type="text"
                   value={field.label || ''}
                   onChange={(e) => onUpdateField(field.id, { label: e.target.value })}
@@ -318,7 +319,7 @@ export default function FieldPropertiesPanel({
             {/* Help Text Input */}
             <div className="space-y-1">
               <label className="block text-xs font-normal text-slate-600">Help Text</label>
-              <input
+              <FastInput
                 type="text"
                 value={field.helperText || ''}
                 onChange={(e) => onUpdateField(field.id, { helperText: e.target.value })}
@@ -410,7 +411,7 @@ export default function FieldPropertiesPanel({
               {/* Normal Text / Long Text Placeholder matching Pic 3 */}
               <div className="space-y-1">
                 <label className="block text-xs font-normal text-slate-600">Placeholder</label>
-                <input
+                <FastInput
                   type="text"
                   value={field.placeholder || ''}
                   onChange={(e) => onUpdateField(field.id, { placeholder: e.target.value })}
@@ -423,7 +424,7 @@ export default function FieldPropertiesPanel({
               <div className="space-y-1">
                 <label className="block text-xs font-normal text-slate-600">Format</label>
                 <div className="relative">
-                  <input
+                  <FastInput
                     type="text"
                     value={field.format !== undefined ? field.format : ''}
                     onChange={(e) => onUpdateField(field.id, { format: e.target.value })}
@@ -466,7 +467,7 @@ export default function FieldPropertiesPanel({
                 <option value="Custom">Custom</option>
               </select>
 
-              <input
+              <FastInput
                 type={isDate && (field.initialValueType === 'Custom' || field.initialValueType === 'Today') ? "date" : "text"}
                 value={field.value || ''}
                 disabled={field.initialValueType === 'Unset'}
@@ -785,7 +786,7 @@ export default function FieldPropertiesPanel({
                   </div>
 
                   <div className="relative flex-1 min-w-0">
-                    <input
+                    <FastInput
                       type="text"
                       value={opt}
                       onChange={(e) => {
@@ -1424,7 +1425,7 @@ export default function FieldPropertiesPanel({
               <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800 text-[10px]">
                 <div>
                   <span className="text-slate-400 block mb-0.5">X Offset:</span>
-                  <input
+                  <FastInput
                     type="text"
                     value={field.pdfMapping?.x || '24%'}
                     onChange={(e) => handleCoordinateChange('x', e.target.value)}
@@ -1433,7 +1434,7 @@ export default function FieldPropertiesPanel({
                 </div>
                 <div>
                   <span className="text-slate-400 block mb-0.5">Y Offset:</span>
-                  <input
+                  <FastInput
                     type="text"
                     value={field.pdfMapping?.y || '29%'}
                     onChange={(e) => handleCoordinateChange('y', e.target.value)}
@@ -1442,7 +1443,7 @@ export default function FieldPropertiesPanel({
                 </div>
                 <div>
                   <span className="text-slate-400 block mb-0.5">Width:</span>
-                  <input
+                  <FastInput
                     type="text"
                     value={field.pdfMapping?.w || '48%'}
                     onChange={(e) => handleCoordinateChange('w', e.target.value)}
@@ -1451,7 +1452,7 @@ export default function FieldPropertiesPanel({
                 </div>
                 <div>
                   <span className="text-slate-400 block mb-0.5">Height:</span>
-                  <input
+                  <FastInput
                     type="text"
                     value={field.pdfMapping?.h || '4.8%'}
                     onChange={(e) => handleCoordinateChange('h', e.target.value)}
@@ -1561,7 +1562,7 @@ export default function FieldPropertiesPanel({
             <label className="block text-xs font-medium text-slate-500 mb-1.5">
               Navbar Name
             </label>
-            <input
+            <FastInput
               type="text"
               value={field.navbarName ?? (effectivePageBreakNum === 1 ? 'Step 1' : `Step ${effectivePageBreakNum}`)}
               placeholder={`Step ${effectivePageBreakNum}`}
@@ -1623,7 +1624,7 @@ export default function FieldPropertiesPanel({
             <label className="block text-xs font-medium text-slate-500 mb-1.5">
               Form Title
             </label>
-            <input
+            <FastInput
               type="text"
               value={field.title ?? ''}
               placeholder="Form Title"
@@ -1636,7 +1637,7 @@ export default function FieldPropertiesPanel({
             <label className="block text-xs font-medium text-slate-500 mb-1.5">
               Help Text
             </label>
-            <textarea
+            <FastTextarea
               rows={3}
               value={field.description ?? field.helperText ?? ''}
               placeholder="Help text for this step or page"
@@ -1827,7 +1828,7 @@ export default function FieldPropertiesPanel({
 
               <div className="space-y-1">
                 <label className="block text-xs font-normal text-slate-600">Next Button</label>
-                <input
+                <FastInput
                   type="text"
                   value={field.nextButtonText ?? 'Submit'}
                   onChange={(e) => onUpdateField(field.id, { nextButtonText: e.target.value, submitButtonText: e.target.value })}
@@ -1839,7 +1840,7 @@ export default function FieldPropertiesPanel({
           ) : (
             <div className="space-y-1">
               <label className="block text-xs font-normal text-slate-600">Next Button</label>
-              <input
+              <FastInput
                 type="text"
                 value={field.nextButtonText ?? 'Continue'}
                 onChange={(e) => onUpdateField(field.id, { nextButtonText: e.target.value })}
@@ -1852,7 +1853,7 @@ export default function FieldPropertiesPanel({
           {/* Button Help */}
           <div className="space-y-1">
             <label className="block text-xs font-normal text-slate-600">Button Help</label>
-            <input
+            <FastInput
               type="text"
               value={field.buttonHelp ?? ''}
               onChange={(e) => onUpdateField(field.id, { buttonHelp: e.target.value })}
@@ -3468,3 +3469,5 @@ export default function FieldPropertiesPanel({
     </div>
   );
 }
+
+export default React.memo(FieldPropertiesPanel);

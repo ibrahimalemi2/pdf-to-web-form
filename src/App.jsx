@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Navbar from './components/Navbar';
 import SidebarTools from './components/SidebarTools';
 import FormCanvas from './components/FormCanvas';
@@ -744,7 +744,7 @@ export default function App() {
   };
 
   // Update field handler
-  const handleUpdateField = (id, updates) => {
+  const handleUpdateField = useCallback((id, updates) => {
     if (id === 'page_break_1') {
       setFormMeta(prev => ({
         ...prev,
@@ -791,10 +791,10 @@ export default function App() {
       }
       return merged;
     }));
-  };
+  }, [selectedFieldId]);
 
   // Delete field handler
-  const handleDeleteField = (id) => {
+  const handleDeleteField = useCallback((id) => {
     if (id === 'page_break_1') {
       showToast('Step 1 is the primary page and cannot be removed.');
       return;
@@ -802,13 +802,13 @@ export default function App() {
     if (id === '0' || id === 'submission_buttons' || (typeof id === 'string' && id.startsWith('page_buttons_'))) {
       return;
     }
-    const remaining = fields.filter(f => f.id !== id);
-    setFields(remaining);
-    if (selectedFieldId === id) {
-      setSelectedFieldId(remaining.length > 0 ? remaining[0].id : null);
-    }
+    setFields(prev => {
+      const remaining = prev.filter(f => f.id !== id);
+      setSelectedFieldId(currentId => currentId === id ? (remaining.length > 0 ? remaining[0].id : null) : currentId);
+      return remaining;
+    });
     showToast('Removed item from form.');
-  };
+  }, []);
 
   // Duplicate field handler
   const handleDuplicateField = (id) => {
@@ -868,20 +868,20 @@ export default function App() {
   };
 
   // Direct reordering handler for drag-and-drop
-  const handleReorderFields = (newFields) => {
+  const handleReorderFields = useCallback((newFields) => {
     setFields(newFields);
-  };
+  }, []);
 
   // Select field and open property inspector (when clicking form canvas boxes)
-  const handleSelectField = (id) => {
+  const handleSelectField = useCallback((id) => {
     setSelectedFieldId(id);
     setIsPropertyPanelOpen(true);
-  };
+  }, []);
 
   // Select field without opening property inspector (when arranging boxes on PDF viewer or connector lines)
-  const handleSelectFieldSilent = (id) => {
+  const handleSelectFieldSilent = useCallback((id) => {
     setSelectedFieldId(id);
-  };
+  }, []);
 
   const selectedField = React.useMemo(() => {
     if (!selectedFieldId) return null;

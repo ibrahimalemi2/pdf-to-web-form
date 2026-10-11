@@ -19,7 +19,7 @@ import { getPageImageUrl, getDocumentPdfUrl } from '../services/api';
 /**
  * Individual Page Sheet Component for Continuous Multi-Page Vertical Scroll
  */
-function PdfPageCard({
+const PdfPageCard = React.memo(function PdfPageCard({
   pageNum,
   totalPages,
   pdfDoc,
@@ -456,7 +456,42 @@ function PdfPageCard({
       </div>
     </div>
   );
-}
+}, (prev, next) => {
+  if (prev.pageNum !== next.pageNum) return false;
+  if (prev.totalPages !== next.totalPages) return false;
+  if (prev.pdfDoc !== next.pdfDoc) return false;
+  if (prev.documentId !== next.documentId) return false;
+  if (prev.previewImageUrl !== next.previewImageUrl) return false;
+  if (prev.zoomLevel !== next.zoomLevel) return false;
+  if (prev.activeToolMode !== next.activeToolMode) return false;
+  if (prev.drawingPage === prev.pageNum || next.drawingPage === next.pageNum) return false;
+
+  const prevHasSelected = prev.fields.some(f => (f.pdfMapping?.page || f.page || 1) === prev.pageNum && f.id === prev.selectedFieldId);
+  const nextHasSelected = next.fields.some(f => (f.pdfMapping?.page || f.page || 1) === next.pageNum && f.id === next.selectedFieldId);
+  if (prevHasSelected !== nextHasSelected) return false;
+  if (nextHasSelected && prev.selectedFieldId !== next.selectedFieldId) return false;
+
+  const prevHasHovered = prev.fields.some(f => (f.pdfMapping?.page || f.page || 1) === prev.pageNum && f.id === prev.hoveredFieldId);
+  const nextHasHovered = next.fields.some(f => (f.pdfMapping?.page || f.page || 1) === next.pageNum && f.id === next.hoveredFieldId);
+  if (prevHasHovered !== nextHasHovered) return false;
+  if (nextHasHovered && prev.hoveredFieldId !== next.hoveredFieldId) return false;
+
+  const prevPageFields = prev.fields.filter(f => (f.pdfMapping?.page || f.page || 1) === prev.pageNum);
+  const nextPageFields = next.fields.filter(f => (f.pdfMapping?.page || f.page || 1) === next.pageNum);
+  if (prevPageFields.length !== nextPageFields.length) return false;
+
+  for (let i = 0; i < prevPageFields.length; i++) {
+    const pf = prevPageFields[i];
+    const nf = nextPageFields[i];
+    if (pf.id !== nf.id) return false;
+    if (pf.type !== nf.type) return false;
+    if (pf.label !== nf.label) return false;
+    if (pf.value !== nf.value) return false;
+    if (pf.pdfMapping?.x !== nf.pdfMapping?.x || pf.pdfMapping?.y !== nf.pdfMapping?.y || pf.pdfMapping?.w !== nf.pdfMapping?.w || pf.pdfMapping?.h !== nf.pdfMapping?.h) return false;
+  }
+
+  return true;
+});
 
 /**
  * PlatoForms-style Alignment Icons (matching Pic 2)
@@ -504,7 +539,7 @@ function FitWidthIcon({ className = "w-4 h-4" }) {
   );
 }
 
-export default function PdfViewer({
+function PdfViewer({
   documentName: _documentName = "Assignment_1_F23-2353.pdf",
   documentId = "sample",
   pdfFile = null,
@@ -627,24 +662,28 @@ export default function PdfViewer({
     }
   };
 
-  // Auto-scroll to selected field if selected on canvas
+  const fieldsRef = useRef(fields);
+  useEffect(() => {
+    fieldsRef.current = fields;
+  }, [fields]);
+
+  // Auto-scroll to selected field if selected on canvas (only on field selection change)
   useEffect(() => {
     if (!selectedFieldId) return;
-    const selField = fields.find(f => f.id === selectedFieldId);
+    const currentFields = fieldsRef.current || [];
+    const selField = currentFields.find(f => f.id === selectedFieldId);
     if (selField && (selField.type === 'Image' || (selField.type === 'Photo' && selField.label?.trim().toLowerCase() === 'image'))) {
       return;
     }
     const scrollTarget = () => {
       const targetEl = document.querySelector(`[data-pdf-field-id="${selectedFieldId}"]`);
       if (targetEl) {
-        targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     };
 
     scrollTarget();
-    const t = setTimeout(scrollTarget, 100);
-    return () => clearTimeout(t);
-  }, [selectedFieldId, fields]);
+  }, [selectedFieldId]);
 
   // Coordinate mapping helper
   const getFieldCoordinates = useCallback((field) => {
@@ -661,7 +700,8 @@ export default function PdfViewer({
       };
     }
 
-    const index = fields.findIndex(f => f.id === field?.id);
+    const currentFields = fieldsRef.current || [];
+    const index = currentFields.findIndex(f => f.id === field?.id);
     const yOffset = 20 + Math.min(index * 7, 70);
 
     return {
@@ -674,7 +714,7 @@ export default function PdfViewer({
       w: field?.columnSpan === 2 ? '72%' : '48%',
       h: '4.8%'
     };
-  }, [fields]);
+  }, []);
 
   const activeField = fields.find(f => f.id === selectedFieldId) || fields[0];
   const activeMapping = getFieldCoordinates(activeField);
@@ -1031,7 +1071,10 @@ export default function PdfViewer({
 
   // Global mouse move & up listeners for drag & resize across all pages with auto-scroll
   useEffect(() => {
-    const handleGlobalMouseMove = (e) => {
+    let rafId = null;
+    let pendingEvent = null;
+
+    const processMouseMove = (e) => {
       if (dragState) {
         // Auto-scroll PDF container when dragging near top or bottom
         if (scrollContainerRef.current) {
@@ -1255,7 +1298,28 @@ export default function PdfViewer({
       }
     };
 
+    const handleGlobalMouseMove = (e) => {
+      pendingEvent = e;
+      if (!rafId) {
+        rafId = requestAnimationFrame(() => {
+          rafId = null;
+          if (pendingEvent) {
+            processMouseMove(pendingEvent);
+          }
+        });
+      }
+    };
+
     const handleGlobalMouseUp = () => {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      if (pendingEvent) {
+        processMouseMove(pendingEvent);
+        pendingEvent = null;
+      }
+
       if (cbDragState && !cbDragState.hasMoved) {
         // Toggle the clicked checkbox option
         const field = fields.find(f => f.id === cbDragState.fieldId);
@@ -1288,6 +1352,7 @@ export default function PdfViewer({
     }
 
     return () => {
+      if (rafId) cancelAnimationFrame(rafId);
       window.removeEventListener('mousemove', handleGlobalMouseMove);
       window.removeEventListener('mouseup', handleGlobalMouseUp);
     };
@@ -1575,3 +1640,5 @@ export default function PdfViewer({
     </section>
   );
 }
+
+export default React.memo(PdfViewer);

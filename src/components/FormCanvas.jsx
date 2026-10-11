@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { PageBreakIcon, SectionBreakIcon } from './SidebarTools';
 import SignaturePadModal from './SignaturePadModal';
+import { FastInput, FastTextarea } from './FastInput';
 
 // Component metadata with rich titles, descriptions, and color tokens for hover identification
 const FIELD_TYPE_INFO = {
@@ -159,7 +160,7 @@ const FIELD_TYPE_INFO = {
   }
 };
 
-export default function FormCanvas({
+function FormCanvas({
   fields = [],
   selectedFieldId = null,
   onSelectField = () => {},
@@ -276,8 +277,15 @@ export default function FormCanvas({
     }
   };
 
-  // Observe sheet cards to update active page indicator in bottom pill
+  const pagesRef = useRef(pages);
   useEffect(() => {
+    pagesRef.current = pages;
+  }, [pages]);
+  const pageIdsKey = pages.map(p => p.id).join(',');
+
+  // Observe sheet cards to update active page indicator in bottom pill (only when pages change structure)
+  useEffect(() => {
+    const currentPages = pagesRef.current || [];
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -292,38 +300,39 @@ export default function FormCanvas({
       { threshold: 0.25 }
     );
 
-    pages.forEach((p) => {
+    currentPages.forEach((p) => {
       const el = document.getElementById(`form-sheet-${p.pageNum}`);
       if (el) observer.observe(el);
     });
 
     return () => observer.disconnect();
-  }, [pages]);
+  }, [pageIdsKey]);
 
   // Auto-switch page and scroll when field or button from another page is selected
   useEffect(() => {
     if (!selectedFieldId) return;
+    const currentPages = pagesRef.current || [];
     if (selectedFieldId === 'page_break_1') {
       scrollToSheet(1);
       return;
     }
     if (selectedFieldId === 'submission_buttons') {
-      scrollToSheet(pages.length);
+      scrollToSheet(currentPages.length);
       return;
     }
     if (selectedFieldId.startsWith('page_buttons_')) {
       const breakId = selectedFieldId.replace('page_buttons_', '');
-      const pIdx = pages.findIndex(p => p.id === breakId);
+      const pIdx = currentPages.findIndex(p => p.id === breakId);
       if (pIdx > 0) {
         scrollToSheet(pIdx);
       }
       return;
     }
-    const pageIdx = pages.findIndex(p => p.id === selectedFieldId || p.fields.some(f => f.id === selectedFieldId));
+    const pageIdx = currentPages.findIndex(p => p.id === selectedFieldId || p.fields.some(f => f.id === selectedFieldId));
     if (pageIdx !== -1) {
       setActiveCanvasPage(pageIdx + 1);
     }
-  }, [selectedFieldId, pages]);
+  }, [selectedFieldId]);
 
   const safeActivePage = Math.min(Math.max(1, activeCanvasPage), Math.max(1, pages.length));
 
@@ -553,7 +562,7 @@ export default function FormCanvas({
     switch (field.type) {
       case 'Long Text':
         return (
-          <textarea
+          <FastTextarea
             rows={3}
             readOnly={field.readOnly}
             value={field.value || ''}
@@ -908,7 +917,7 @@ export default function FormCanvas({
       case 'Short Text':
       default:
         return (
-          <input
+          <FastInput
             type="text"
             readOnly={field.readOnly}
             value={field.value || ''}
@@ -1920,3 +1929,5 @@ export default function FormCanvas({
     </main>
   );
 }
+
+export default React.memo(FormCanvas);
