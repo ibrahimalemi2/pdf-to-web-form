@@ -1546,9 +1546,14 @@ function FormCanvas({
                 </div>
 
                 <div style={{ textAlign: page.align || 'left' }}>
-                  <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight mb-1">
-                    {page.title || formTitle}
-                  </h1>
+                  <div className="flex items-center gap-2 group/title">
+                    <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight mb-1">
+                      {page.title || formTitle}
+                    </h1>
+                    <span className="opacity-0 group-hover/stepHeader:opacity-100 text-blue-600 text-xs font-semibold flex items-center gap-1 transition select-none">
+                      <Edit2 className="w-3.5 h-3.5" /> Edit Title & Description
+                    </span>
+                  </div>
                   {(page.description || formDescription) && (
                     <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
                       {page.description || formDescription}

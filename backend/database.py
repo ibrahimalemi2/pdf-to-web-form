@@ -251,8 +251,8 @@ def get_user_by_portal_slug(portal_slug: str) -> Optional[Dict[str, Any]]:
         "displayName": row["display_name"],
         "agencyName": row["agency_name"],
         "portalSlug": row["portal_slug"],
-        "portalTitle": row["portal_title"] or f"{row['agency_name']} Public Portal",
-        "portalDescription": row["portal_description"] or "Select an official document below to complete and download.",
+        "portalTitle": row["portal_title"] or "Official Document Terminal",
+        "portalDescription": row["portal_description"] or "Select a document to begin. Your information is processed securely for this session only and is never retained on public terminals.",
     }
 
 def update_user_profile(
@@ -526,6 +526,51 @@ def set_form_status(form_id: int, user_id: int, new_status: str) -> bool:
     conn.commit()
     conn.close()
     return affected > 0
+
+def update_form_details(
+    form_id: int,
+    user_id: int,
+    title: Optional[str] = None,
+    description: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
+    """Updates only form title and description without modifying other schema components."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, form_meta_json FROM forms WHERE id = ? AND user_id = ?", (form_id, user_id))
+    existing = cursor.fetchone()
+    if not existing:
+        conn.close()
+        return None
+
+    now = datetime.now(timezone.utc).isoformat()
+    fields_to_update = ["updated_at = ?"]
+    params = [now]
+
+    try:
+        form_meta = json.loads(existing["form_meta_json"]) if existing["form_meta_json"] else {}
+    except Exception:
+        form_meta = {}
+
+    if title is not None:
+        clean_title = title.strip()
+        fields_to_update.append("title = ?")
+        params.append(clean_title)
+        form_meta["title"] = clean_title
+
+    if description is not None:
+        clean_desc = description.strip()
+        fields_to_update.append("description = ?")
+        params.append(clean_desc)
+        form_meta["description"] = clean_desc
+
+    fields_to_update.append("form_meta_json = ?")
+    params.append(json.dumps(form_meta))
+
+    params.extend([form_id, user_id])
+    cursor.execute(f"UPDATE forms SET {', '.join(fields_to_update)} WHERE id = ? AND user_id = ?", params)
+    conn.commit()
+    conn.close()
+    return get_form_by_id(form_id, user_id=user_id)
 
 def delete_user_form(form_id: int, user_id: int) -> bool:
     """Deletes a form belonging to a user."""

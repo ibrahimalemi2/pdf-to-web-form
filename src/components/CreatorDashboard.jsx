@@ -23,13 +23,15 @@ import {
   X,
   FileCheck,
   SquareMinus,
-  Scan
+  Scan,
+  Sliders
 } from 'lucide-react';
 import {
   fetchUserForms,
   fetchUserForm,
   saveUserForm,
   updateFormStatus,
+  updateFormDetails,
   deleteUserForm,
   updateUserProfile,
   getFormPreviewUrl
@@ -64,7 +66,10 @@ function formatTimeAgo(dateString) {
  * e.g., "visa_application_v2.pdf" -> "Visa Application V2"
  */
 function cleanFormTitle(form) {
-  let raw = form.title || form.originalFilename || 'Official Consular Document';
+  if (form?.title && form.title.trim()) {
+    return form.title.trim();
+  }
+  let raw = form?.originalFilename || 'Official Consular Document';
   raw = raw.replace(/\.pdf$/i, '');
   raw = raw.replace(/[_-]+/g, ' ').trim();
   return raw
@@ -182,7 +187,8 @@ export default function CreatorDashboard({
   onLogout,
   onCreateNewForm,
   onEditForm,
-  onViewPortal
+  onViewPortal,
+  onUpdateUser
 }) {
   const [forms, setForms] = useState([]);
   const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'published', 'draft'
@@ -200,12 +206,15 @@ export default function CreatorDashboard({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentAgencyName, setCurrentAgencyName] = useState(currentUser?.agencyName || 'Consular & Document Services');
   const [agencyNameInput, setAgencyNameInput] = useState(currentUser?.agencyName || 'Consular & Document Services');
+  const [portalTitleInput, setPortalTitleInput] = useState(currentUser?.portalTitle || 'Official Document Terminal');
+  const [portalDescInput, setPortalDescInput] = useState(currentUser?.portalDescription || 'Select a document to begin. Your information is processed securely for this session only and is never retained on public terminals.');
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsSuccess, setSettingsSuccess] = useState(false);
 
-  // Rename Form Modal State
+  // Customize Form Modal State
   const [renamingForm, setRenamingForm] = useState(null);
   const [renameTitleInput, setRenameTitleInput] = useState('');
+  const [renameDescInput, setRenameDescInput] = useState('');
   const [isSavingRename, setIsSavingRename] = useState(false);
 
   const agencyName = currentAgencyName;
@@ -307,10 +316,18 @@ export default function CreatorDashboard({
     }
   };
 
+  const handleOpenSettings = () => {
+    setAgencyNameInput(currentAgencyName);
+    setPortalTitleInput(currentUser?.portalTitle || 'Official Document Terminal');
+    setPortalDescInput(currentUser?.portalDescription || 'Select a document to begin. Your information is processed securely for this session only and is never retained on public terminals.');
+    setIsSettingsOpen(true);
+  };
+
   const handleStartRename = (form, e) => {
     if (e) e.stopPropagation();
     setRenamingForm(form);
-    setRenameTitleInput(cleanFormTitle(form));
+    setRenameTitleInput(form.title || cleanFormTitle(form));
+    setRenameDescInput(form.description || '');
   };
 
   const handleSaveRename = async (e) => {
@@ -318,16 +335,18 @@ export default function CreatorDashboard({
     if (!renamingForm || !renameTitleInput.trim()) return;
     setIsSavingRename(true);
     try {
-      const full = await fetchUserForm(renamingForm.id);
-      await saveUserForm({
-        ...full,
-        id: renamingForm.id,
-        title: renameTitleInput.trim()
+      const updated = await updateFormDetails(renamingForm.id, {
+        title: renameTitleInput.trim(),
+        description: renameDescInput.trim()
       });
-      setForms(prev => prev.map(f => f.id === renamingForm.id ? { ...f, title: renameTitleInput.trim() } : f));
+      setForms(prev => prev.map(f => f.id === renamingForm.id ? {
+        ...f,
+        title: updated.title,
+        description: updated.description
+      } : f));
       setRenamingForm(null);
     } catch (err) {
-      alert(`Could not rename form: ${err.message}`);
+      alert(`Could not save form details: ${err.message}`);
     } finally {
       setIsSavingRename(false);
     }
@@ -338,10 +357,13 @@ export default function CreatorDashboard({
     setIsSavingSettings(true);
     setSettingsSuccess(false);
     try {
-      await updateUserProfile({
-        agencyName: agencyNameInput.trim()
+      const updated = await updateUserProfile({
+        agencyName: agencyNameInput.trim(),
+        portalTitle: portalTitleInput.trim() || 'Official Document Terminal',
+        portalDescription: portalDescInput.trim() || 'Select a document to begin. Your information is processed securely for this session only and is never retained on public terminals.',
       });
       setCurrentAgencyName(agencyNameInput.trim());
+      if (onUpdateUser) onUpdateUser(updated);
       setSettingsSuccess(true);
       setTimeout(() => {
         setSettingsSuccess(false);
@@ -491,16 +513,16 @@ export default function CreatorDashboard({
                 <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
               </button>
 
-              {/* Destination 4: Agency Settings */}
+              {/* Destination 4: Portal & Agency Settings */}
               <button
-                onClick={() => setIsSettingsOpen(true)}
+                onClick={handleOpenSettings}
                 className="w-full group flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium text-slate-700 hover:text-violet-950 hover:bg-violet-50/70 border border-transparent hover:border-violet-200/60 transition cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="w-6 h-6 rounded-md bg-violet-100 text-violet-600 flex items-center justify-center shrink-0 group-hover:bg-violet-600 group-hover:text-white transition-colors">
                     <Settings className="w-3.5 h-3.5" />
                   </div>
-                  <span>Agency Settings</span>
+                  <span>Portal & Agency Settings</span>
                 </div>
                 <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-violet-600 transition-colors" />
               </button>
@@ -651,7 +673,16 @@ export default function CreatorDashboard({
             </div>
 
             {/* Right Controls: Quick Links & Primary "+ New Form" Button */}
-            <div className="flex items-center gap-2.5 shrink-0">
+            <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+              <button
+                onClick={handleOpenSettings}
+                className="px-3 py-1.5 bg-blue-50/80 hover:bg-blue-100 text-blue-900 rounded-lg text-xs font-semibold border border-blue-200/90 shadow-2xs flex items-center gap-1.5 transition cursor-pointer"
+                title="Customize Public Portal Page Heading, Description & Agency Branding"
+              >
+                <Sliders className="w-3.5 h-3.5 text-blue-700" />
+                <span>Customize Portal Header</span>
+              </button>
+
               <button
                 onClick={() => setIsAgencyQrOpen(true)}
                 className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-medium border border-slate-200 shadow-2xs flex items-center gap-1.5 transition cursor-pointer"
@@ -791,7 +822,7 @@ export default function CreatorDashboard({
                               className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center gap-2 text-slate-700 cursor-pointer"
                             >
                               <Edit2 className="w-3.5 h-3.5 text-slate-500" />
-                              <span>Rename Form</span>
+                              <span>Edit Title & Description</span>
                             </button>
 
                             <button
@@ -868,20 +899,45 @@ export default function CreatorDashboard({
                     {/* Bottom Info Section: Pure White Container */}
                     <div className="p-5 flex flex-col justify-between flex-1 bg-white">
                       <div>
-                        {/* Bold Filename / Form Title */}
-                        <h3
-                          title={form.originalFilename || form.title}
-                          className="font-bold text-base text-slate-900 leading-snug line-clamp-2 break-all"
-                        >
-                          {form.originalFilename || form.title || 'document.pdf'}
-                        </h3>
+                        {/* Bold Filename / Form Title with inline edit */}
+                        <div className="flex items-start justify-between gap-2">
+                          <h3
+                            title={title}
+                            className="font-bold text-base text-slate-900 leading-snug line-clamp-1 flex-1 group-hover:text-blue-600 transition-colors"
+                          >
+                            {title}
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={(e) => handleStartRename(form, e)}
+                            title="Edit Title & Description"
+                            className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition cursor-pointer shrink-0 opacity-0 group-hover:opacity-100"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        {form.description ? (
+                          <p className="text-xs text-slate-500 line-clamp-2 mt-1 leading-relaxed">
+                            {form.description}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-slate-400 italic line-clamp-1 mt-1">
+                            No description set. Click "Edit Details" to add guidance.
+                          </p>
+                        )}
                       </div>
 
-                      {/* Card Bottom Row: Tag and Stats */}
-                      <div className="mt-4 flex items-center justify-between">
-                        <span className="px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 bg-slate-100 border border-slate-200/80 select-none">
-                          Web PDF Form
-                        </span>
+                      {/* Card Bottom Row: Action and Stats */}
+                      <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={(e) => handleStartRename(form, e)}
+                          className="px-2.5 py-1 rounded-md text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200/80 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                          title="Customize form title and description"
+                        >
+                          <Edit2 className="w-3 h-3 text-blue-600" />
+                          <span>Edit Details</span>
+                        </button>
 
                         <div className="flex items-center gap-3 text-slate-400 font-mono text-xs select-none">
                           <div className="flex items-center gap-1.5" title={`${form.submissionsCount || 0} Submissions`}>
@@ -940,7 +996,12 @@ export default function CreatorDashboard({
                                 <div className="font-semibold text-slate-900 group-hover:text-blue-600 transition truncate">
                                   {title}
                                 </div>
-                                <div className="text-[11px] text-slate-400 font-mono truncate">
+                                {form.description && (
+                                  <div className="text-[11px] text-slate-500 truncate max-w-sm">
+                                    {form.description}
+                                  </div>
+                                )}
+                                <div className="text-[10px] text-slate-400 font-mono truncate">
                                   {form.originalFilename || `${form.formSlug}.pdf`}
                                 </div>
                               </div>
@@ -994,10 +1055,18 @@ export default function CreatorDashboard({
                                 <QrCode className="w-3.5 h-3.5" />
                               </button>
                               <button
-                                onClick={() => handleFormClick(form)}
-                                className="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded-md font-medium text-xs transition cursor-pointer"
+                                onClick={(e) => handleStartRename(form, e)}
+                                title="Customize Form Title & Description"
+                                className="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded-md font-medium text-xs transition cursor-pointer flex items-center gap-1"
                               >
-                                Edit
+                                <Edit2 className="w-3 h-3 text-blue-600" />
+                                <span>Details</span>
+                              </button>
+                              <button
+                                onClick={() => handleFormClick(form)}
+                                className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-semibold text-xs transition cursor-pointer"
+                              >
+                                Edit Builder
                               </button>
                             </div>
                           </td>
@@ -1013,7 +1082,7 @@ export default function CreatorDashboard({
       </div>
 
       {/* ============================================================ */}
-      {/* MODALS: Rename Form Dialog                                   */}
+      {/* MODALS: Customize Form Title & Description Dialog            */}
       {/* ============================================================ */}
       {renamingForm && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
@@ -1021,11 +1090,11 @@ export default function CreatorDashboard({
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
                 <Edit2 className="w-4 h-4 text-blue-600" />
-                <span>Rename Form</span>
+                <span>Customize Form Details</span>
               </h3>
               <button
                 onClick={() => setRenamingForm(null)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1046,7 +1115,21 @@ export default function CreatorDashboard({
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Form Description
+                </label>
+                <textarea
+                  rows={3}
+                  value={renameDescInput}
+                  onChange={(e) => setRenameDescInput(e.target.value)}
+                  placeholder="e.g., Complete the required fields below. Responses are dynamically synchronized with your official document."
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">This description is shown on portal cards and at the top of client forms.</p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setRenamingForm(null)}
@@ -1059,7 +1142,7 @@ export default function CreatorDashboard({
                   disabled={isSavingRename || !renameTitleInput.trim()}
                   className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs disabled:opacity-50 cursor-pointer"
                 >
-                  {isSavingRename ? 'Saving...' : 'Save Title'}
+                  {isSavingRename ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>
@@ -1068,7 +1151,7 @@ export default function CreatorDashboard({
       )}
 
       {/* ============================================================ */}
-      {/* MODALS: Agency Workspace Settings Dialog                     */}
+      {/* MODALS: Portal & Agency Workspace Settings Dialog            */}
       {/* ============================================================ */}
       {isSettingsOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
@@ -1077,18 +1160,60 @@ export default function CreatorDashboard({
               <div className="flex items-center gap-2">
                 <Settings className="w-4 h-4 text-blue-600" />
                 <h3 className="text-sm font-semibold text-slate-900">
-                  Agency Workspace Settings
+                  Portal & Agency Settings
                 </h3>
               </div>
               <button
                 onClick={() => setIsSettingsOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleSaveAgencySettings} className="space-y-4">
+              {/* Live Preview of Public Kiosk Header */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1 select-none">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                  <span>Live Public Portal Preview</span>
+                  <span className="text-blue-600 font-semibold">{agencyNameInput || 'Consulate'}</span>
+                </div>
+                <div className="text-sm font-extrabold text-slate-900 truncate">
+                  {portalTitleInput || 'Official Document Terminal'}
+                </div>
+                <div className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                  {portalDescInput || 'Select a document to begin. Your information is processed securely for this session only and is never retained on public terminals.'}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Public Portal Page Heading
+                </label>
+                <input
+                  type="text"
+                  value={portalTitleInput}
+                  onChange={(e) => setPortalTitleInput(e.target.value)}
+                  placeholder="Official Document Terminal"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">Main heading shown at the top of your public kiosk portal page.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Public Portal Page Description
+                </label>
+                <textarea
+                  rows={3}
+                  value={portalDescInput}
+                  onChange={(e) => setPortalDescInput(e.target.value)}
+                  placeholder="Select a document to begin. Your information is processed securely for this session only..."
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">Introduction instructions for citizens visiting your portal.</p>
+              </div>
+
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">
                   Consular / Agency Legal Title
@@ -1097,6 +1222,7 @@ export default function CreatorDashboard({
                   type="text"
                   value={agencyNameInput}
                   onChange={(e) => setAgencyNameInput(e.target.value)}
+                  placeholder="e.g. Consulate or Ministry of Foreign Affairs"
                   className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>

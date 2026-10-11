@@ -955,6 +955,8 @@ export default function App() {
     return (
       <PublicPortalView
         portalSlug={activePortalSlug || currentUser?.portalSlug || 'portal'}
+        currentUser={currentUser}
+        onUpdateUser={setCurrentUser}
         onSelectForm={(formSlug) => {
           setActiveFillSlug(formSlug);
           setCurrentView('fill');
@@ -1007,6 +1009,9 @@ export default function App() {
             setActivePortalSlug(portalSlug);
             setCurrentView('portal');
             window.location.hash = `#/portal/${portalSlug}`;
+          }}
+          onUpdateUser={(updated) => {
+            setCurrentUser(prev => ({ ...prev, ...updated }));
           }}
         />
         {toastMessage && (

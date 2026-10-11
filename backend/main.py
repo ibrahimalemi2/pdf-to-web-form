@@ -34,6 +34,7 @@ from database import (
     get_form_by_slug,
     list_user_forms,
     set_form_status,
+    update_form_details,
     delete_user_form,
     get_public_portal_catalog,
 )
@@ -869,6 +870,33 @@ def set_form_status_route(form_id: int, payload: FormStatusPayload, user: Dict[s
         "message": f"Form status changed to {payload.status}.",
         "formId": form_id,
         "newStatus": payload.status
+    }
+
+
+class UpdateFormDetailsPayload(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+
+
+@app.patch("/api/forms/{form_id}/details")
+def update_form_details_route(
+    form_id: int,
+    payload: UpdateFormDetailsPayload,
+    user: Dict[str, Any] = Depends(get_current_user_dep)
+):
+    """Updates only form title and description."""
+    updated = update_form_details(
+        form_id=form_id,
+        user_id=user["id"],
+        title=payload.title,
+        description=payload.description
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Form not found or unauthorized.")
+    return {
+        "status": "success",
+        "message": "Form details updated successfully.",
+        "form": updated
     }
 
 

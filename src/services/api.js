@@ -412,6 +412,20 @@ export async function updateFormStatus(formId, status) {
   return data;
 }
 
+export async function updateFormDetails(formId, { title, description }) {
+  const response = await fetch(`${API_BASE_URL}/api/forms/${formId}/details`, {
+    method: 'PATCH',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ title, description }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to update form details');
+  }
+  return data.form;
+}
+
 export async function deleteUserForm(formId) {
   const response = await fetch(`${API_BASE_URL}/api/forms/${formId}`, {
     method: 'DELETE',

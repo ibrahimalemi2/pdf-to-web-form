@@ -6,22 +6,25 @@ import {
   ArrowRight,
   QrCode,
   Smartphone,
-  X,
   AlertCircle,
   Loader2,
   List,
   LayoutGrid,
   Clock,
-  Building2
+  Building2,
 } from 'lucide-react';
 import { fetchPublicPortal, getFormPreviewUrl } from '../services/api';
 import QrCodeModal from './QrCodeModal';
 
 /**
  * Format raw file names into clean, authoritative form titles.
+ * Preserves custom titles entered by the user.
  */
 function cleanFormTitle(form) {
-  let raw = form.title || form.originalFilename || 'Official Document';
+  if (form?.title && form.title.trim()) {
+    return form.title.trim();
+  }
+  let raw = form?.originalFilename || 'Official Document';
   raw = raw.replace(/\.pdf$/i, '');
   raw = raw.replace(/[_-]+/g, ' ').trim();
   return raw
@@ -225,8 +228,9 @@ export default function PublicPortalView({ portalSlug, onSelectForm }) {
   }, [forms, searchQuery, activeCategory]);
 
   const agencyName = agencyData?.agencyName || 'Consular & Document Services';
-  const portalTitle = 'Official Document Terminal';
+  const portalTitle = agencyData?.portalTitle || 'Official Document Terminal';
   const portalDesc =
+    agencyData?.portalDescription ||
     'Select a document to begin. Your information is processed securely for this session only and is never retained on public terminals.';
 
   const portalFullUrl = typeof window !== 'undefined'
@@ -263,7 +267,15 @@ export default function PublicPortalView({ portalSlug, onSelectForm }) {
             <span className="text-slate-400 hidden sm:inline">Public Access Terminal</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <a
+              href="#/dashboard"
+              className="text-slate-300 hover:text-white text-[11px] font-medium transition flex items-center gap-1 cursor-pointer"
+              title="Open Creator Management Dashboard"
+            >
+              <span>Creator Dashboard</span>
+              <span>→</span>
+            </a>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-950/70 text-emerald-300 border border-emerald-500/30">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span>Terminal Ready</span>
@@ -281,21 +293,22 @@ export default function PublicPortalView({ portalSlug, onSelectForm }) {
               <span>{agencyName}</span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-              {portalTitle}
-            </h1>
-
-            <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed pt-0.5">
-              {portalDesc}
-            </p>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+                {portalTitle}
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed pt-1.5">
+                {portalDesc}
+              </p>
+            </div>
           </div>
 
-          {/* Understated Mobile Handoff Button (Send terminal to phone) */}
-          <div className="shrink-0 self-start md:self-center">
+          {/* Action Buttons: Send to Phone QR */}
+          <div className="shrink-0 self-start md:self-center flex items-center gap-2.5 flex-wrap">
             <button
               type="button"
               onClick={() => setIsPortalQrOpen(true)}
-              className="min-h-[44px] px-4 py-2 rounded-lg border border-blue-200 bg-white hover:bg-blue-50/80 active:bg-blue-100 text-blue-900 font-semibold text-xs shadow-xs inline-flex items-center gap-2 transition cursor-pointer"
+              className="min-h-[44px] px-4 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-800 font-semibold text-xs shadow-xs inline-flex items-center gap-2 transition cursor-pointer"
             >
               <Smartphone className="w-4 h-4 text-blue-600" />
               <span>Send to Phone (QR)</span>
@@ -674,6 +687,8 @@ export default function PublicPortalView({ portalSlug, onSelectForm }) {
           isSingleForm={false}
         />
       )}
+
+      {/* Note: All customization of headers, descriptions, and forms is performed exclusively in the Creator Dashboard */}
     </div>
   );
 }

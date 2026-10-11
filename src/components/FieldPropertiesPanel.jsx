@@ -1622,12 +1622,12 @@ function FieldPropertiesPanel({
 
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1.5">
-              Form Title
+              {effectivePageBreakNum === 1 ? 'Form Title / Heading' : 'Page Title'}
             </label>
             <FastInput
               type="text"
               value={field.title ?? ''}
-              placeholder="Form Title"
+              placeholder={effectivePageBreakNum === 1 ? 'Official Form Title' : 'Page Title'}
               onChange={(e) => onUpdateField(field.id, { title: e.target.value })}
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs"
             />
@@ -1635,15 +1635,20 @@ function FieldPropertiesPanel({
 
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1.5">
-              Help Text
+              {effectivePageBreakNum === 1 ? 'Form Description / Subtitle' : 'Help Text / Description'}
             </label>
             <FastTextarea
               rows={3}
               value={field.description ?? field.helperText ?? ''}
-              placeholder="Help text for this step or page"
+              placeholder={effectivePageBreakNum === 1 ? 'Official description shown on portal cards and at the top of the form' : 'Help text for this step or page'}
               onChange={(e) => onUpdateField(field.id, { description: e.target.value, helperText: e.target.value })}
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-2xs resize-none"
             />
+            {effectivePageBreakNum === 1 && (
+              <p className="text-[11px] text-slate-400 mt-1">
+                This description appears on the document card in the public portal and at the top of the form.
+              </p>
+            )}
           </div>
 
           {/* Read-Only and Hidden Checkboxes matching Screenshot */}
